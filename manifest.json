@@ -1,5 +1,5 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "智能表单填充助手",
   "version": "1.0",
   "description": "使用大模型智能识别和填充网页表单",
@@ -7,21 +7,32 @@
     "activeTab",
     "contextMenus",
     "storage",
+    "sidePanel",
+    "scripting"
+  ],
+  "host_permissions": [
     "<all_urls>"
   ],
-  "browser_action": {
-    "default_title": "智能表单填充",
-    "default_popup": "popup.html"
+  "action": {
+    "default_title": "打开表单填充助手"
   },
   "background": {
-    "scripts": ["background.js"],
-    "persistent": false
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
       "js": ["content.js"],
       "all_frames": true
+    }
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["popup.html", "popup.js"],
+      "matches": ["<all_urls>"]
     }
   ]
 } 

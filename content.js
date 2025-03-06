@@ -853,29 +853,50 @@ function handleFormFill(formActions) {
 
 // 修改消息监听器部分
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === "extractXPaths") {
-        removeHighlights(); // 先清除现有的高亮
-        const results = extractFormElements(); // 这会添加新的高亮
-        // 输出纯HTML但不影响高亮
-        setTimeout(() => {
-            getPagePureHTML();
-        }, 100);
-        sendResponse({success: true, count: results.length});
-    } else if (request.action === "getPureHTML") {
-        // 单独获取纯HTML而不影响高亮
-        const pureHTML = getPagePureHTML();
-        sendResponse({success: true, html: pureHTML});
-    } else if (request.action === "removeHighlights") {
-        removeHighlights();
-        sendResponse({success: true});
-    } else if (request.action === "fillFormElements") {
-        // 处理表单填充请求
-        const successCount = handleFormFill(request.formActions);
-        sendResponse({success: true, count: successCount});
-    } else if (request.action === "showToast") {
-        // 显示toast消息
-        showToast(request.message, request.type, request.duration);
-        sendResponse({success: true});
+    try {
+        if (request.action === "extractXPaths") {
+            removeHighlights(); // 先清除现有的高亮
+            const results = extractFormElements(); // 这会添加新的高亮
+            // 输出纯HTML但不影响高亮
+            setTimeout(() => {
+                try {
+                    getPagePureHTML();
+                } catch (error) {
+                    console.error('获取纯HTML时出错:', error);
+                }
+            }, 100);
+            sendResponse({success: true, count: results.length});
+        } else if (request.action === "getPureHTML") {
+            // 单独获取纯HTML而不影响高亮
+            try {
+                const pureHTML = getPagePureHTML();
+                sendResponse({success: true, html: pureHTML});
+            } catch (error) {
+                console.error('获取纯HTML时出错:', error);
+                sendResponse({success: false, error: error.message});
+            }
+        } else if (request.action === "removeHighlights") {
+            removeHighlights();
+            sendResponse({success: true});
+        } else if (request.action === "fillFormElements") {
+            // 处理表单填充请求
+            try {
+                const successCount = handleFormFill(request.formActions);
+                sendResponse({success: true, count: successCount});
+            } catch (error) {
+                console.error('填充表单时出错:', error);
+                sendResponse({success: false, error: error.message});
+            }
+        } else if (request.action === "showToast") {
+            // 显示toast消息
+            showToast(request.message, request.type, request.duration);
+            sendResponse({success: true});
+        } else {
+            sendResponse({success: false, error: '未知的操作类型'});
+        }
+    } catch (error) {
+        console.error('处理消息时出错:', error);
+        sendResponse({success: false, error: error.message});
     }
     return true;
 }); 

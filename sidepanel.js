@@ -56,6 +56,23 @@ document.addEventListener('DOMContentLoaded', function() {
         element.addEventListener('change', saveConfig);
     });
 
+    // 为用户输入框添加快捷键（Ctrl + Enter）
+    userPromptTextarea.addEventListener('keydown', function(e) {
+        // 检查是否按下了Ctrl+Enter
+        if (e.ctrlKey && e.key === 'Enter') {
+            e.preventDefault(); // 阻止默认行为
+            
+            // 如果AI请求正在进行中，则不执行操作
+            if (isAIRequestInProgress) {
+                showToastInPage('请等待当前请求完成', 'warning');
+                return;
+            }
+            
+            fillFormButton.click(); // 触发填充按钮的点击事件
+            showToastInPage('使用快捷键 Ctrl+Enter 触发填充', 'info', 1500);
+        }
+    });
+
     // 设置按钮状态的函数
     function setButtonsState(disabled) {
         fillFormButton.disabled = disabled;
@@ -95,23 +112,6 @@ document.addEventListener('DOMContentLoaded', function() {
             aiRequestTimeoutId = null;
         }
     }
-
-    // 为用户输入框添加快捷键（Ctrl + Enter）
-    userPromptTextarea.addEventListener('keydown', function(e) {
-        // 检查是否按下了Ctrl+Enter
-        if (e.ctrlKey && e.key === 'Enter') {
-            e.preventDefault(); // 阻止默认行为
-            
-            // 如果AI请求正在进行中，则不执行操作
-            if (isAIRequestInProgress) {
-                showToastInPage('请等待当前请求完成', 'warning');
-                return;
-            }
-            
-            fillFormButton.click(); // 触发填充按钮的点击事件
-            showToastInPage('使用快捷键 Ctrl+Enter 触发填充', 'info', 1500);
-        }
-    });
 
     // 在页面上显示toast消息
     function showToastInPage(message, type = 'info', duration = 3000) {
@@ -158,6 +158,11 @@ document.addEventListener('DOMContentLoaded', function() {
         showToastInPage('正在识别页面表单元素...', 'info');
         
         chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            if (!tabs || !tabs[0] || !tabs[0].id) {
+                showToastInPage('无法获取当前标签页', 'error');
+                return;
+            }
+            
             chrome.tabs.sendMessage(tabs[0].id, {action: "extractXPaths"}, function(response) {
                 if (response && response.success) {
                     showToastInPage(`已识别 ${response.count} 个表单元素`, 'success');
@@ -478,7 +483,6 @@ ${JSON.stringify(formElements, null, 2)}
                 break;
             case 'qwen-max':
                 modelId = 'qwen-max';
-                break;
             default:
                 modelId = 'qwen-turbo';
         }
@@ -653,4 +657,4 @@ ${JSON.stringify(formElements, null, 2)}
             }
         }
     }
-});
+}); 
