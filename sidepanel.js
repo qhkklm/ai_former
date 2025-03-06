@@ -265,6 +265,20 @@ document.addEventListener('DOMContentLoaded', function() {
                                             
                                             if (fillResponse && fillResponse.success) {
                                                 showToastInPage(`已成功填充 ${fillResponse.count} 个表单元素`, 'success');
+                                                
+                                                // 自动触发清除识别
+                                                setTimeout(() => {
+                                                    chrome.tabs.sendMessage(tabs[0].id, {action: "removeHighlights"}, function(response) {
+                                                        if (response && response.success) {
+                                                            console.log('已自动移除所有高亮');
+                                                            // 同时清除localStorage中的表单元素数据
+                                                            chrome.scripting.executeScript({
+                                                                target: {tabId: tabs[0].id},
+                                                                func: () => localStorage.removeItem('extractedElements')
+                                                            });
+                                                        }
+                                                    });
+                                                }, 500); // 延迟500毫秒执行，确保填充完成
                                             } else {
                                                 showToastInPage('填充表单失败，请重试', 'error');
                                             }
@@ -403,8 +417,22 @@ document.addEventListener('DOMContentLoaded', function() {
     async function callOllamaAPI(config, userPrompt, formElements) {
         const url = `${config.url}/api/generate`;
         
+        // 获取当前日期和时间
+        const now = new Date();
+        const dateTimeStr = now.toLocaleString('zh-CN', { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+        
         // 构建提示词
         const systemPrompt = `你是一个智能表单填充助手。根据用户的要求，帮助用户填写表单。
+当前日期和时间是: ${dateTimeStr}
+
 以下是页面上的表单元素列表：
 ${JSON.stringify(formElements, null, 2)}
 
@@ -413,6 +441,7 @@ ${JSON.stringify(formElements, null, 2)}
 1. 对于contenteditable元素（可编辑的div），需要填写文本内容
 2. 对于复杂表单元素（type为complex的元素），可能需要填写其内部的输入元素
 3. 如果是评论框、留言框等，请根据用户要求生成合适的内容
+4. 如果需要填写日期，除非用户明确指定，否则请使用当前日期: ${dateTimeStr}
 
 你的回答必须是一个JSON格式，包含formActions数组，每个元素包含elementId和action（填写内容或选择选项）。
 例如：{"formActions":[{"elementId":"email","action":"user@example.com"},{"elementId":"age","action":"30"}]}`;
@@ -458,8 +487,22 @@ ${JSON.stringify(formElements, null, 2)}
     async function callQianwenAPI(config, userPrompt, formElements) {
         const url = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation';
         
+        // 获取当前日期和时间
+        const now = new Date();
+        const dateTimeStr = now.toLocaleString('zh-CN', { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+        
         // 构建提示词
         const systemPrompt = `你是一个智能表单填充助手。根据用户的要求，帮助用户填写表单。
+当前日期和时间是: ${dateTimeStr}
+
 以下是页面上的表单元素列表：
 ${JSON.stringify(formElements, null, 2)}
 
@@ -468,6 +511,7 @@ ${JSON.stringify(formElements, null, 2)}
 1. 对于contenteditable元素（可编辑的div），需要填写文本内容
 2. 对于复杂表单元素（type为complex的元素），可能需要填写其内部的输入元素
 3. 如果是评论框、留言框等，请根据用户要求生成合适的内容
+4. 如果需要填写日期，除非用户明确指定，否则请使用当前日期: ${dateTimeStr}
 
 你的回答必须是一个JSON格式，包含formActions数组，每个元素包含elementId和action（填写内容或选择选项）。
 例如：{"formActions":[{"elementId":"email","action":"user@example.com"},{"elementId":"age","action":"30"}]}`;
