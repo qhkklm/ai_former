@@ -854,7 +854,10 @@ function handleFormFill(formActions) {
 // 修改消息监听器部分
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     try {
-        if (request.action === "extractXPaths") {
+        if (request.action === "ping") {
+            // 简单的ping响应，用于检测内容脚本是否正常工作
+            sendResponse({success: true, message: "content script is alive"});
+        } else if (request.action === "extractXPaths") {
             removeHighlights(); // 先清除现有的高亮
             const results = extractFormElements(); // 这会添加新的高亮
             // 输出纯HTML但不影响高亮

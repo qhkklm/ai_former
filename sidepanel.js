@@ -16,6 +16,67 @@ document.addEventListener('DOMContentLoaded', function() {
     // 添加一个变量来跟踪AI请求状态
     let isAIRequestInProgress = false;
     let aiRequestTimeoutId = null;
+    let isHighlightBeingRemoved = false; // 添加标志位，跟踪是否正在移除高亮
+    let isRefreshPromptShown = false; // 添加标志位，避免重复显示刷新提示
+
+    // 通用错误处理函数，处理"Receiving end does not exist"错误
+    function handleConnectionError(error, tabId, callback) {
+        console.error('连接错误:', error);
+        
+        // 检查是否是"Receiving end does not exist"错误
+        if (error && error.message && error.message.includes("Receiving end does not exist")) {
+            // 避免重复显示刷新提示
+            if (!isRefreshPromptShown) {
+                isRefreshPromptShown = true;
+                
+                // 显示错误提示，并提供刷新按钮
+                showToastInPage('无法连接到页面，请刷新页面或重新打开侧边栏', 'error', 10000);
+                
+                // 创建刷新按钮
+                const refreshButton = document.createElement('button');
+                refreshButton.textContent = '刷新页面';
+                refreshButton.style.marginTop = '10px';
+                refreshButton.style.backgroundColor = '#4285f4';
+                refreshButton.style.color = 'white';
+                refreshButton.style.border = 'none';
+                refreshButton.style.padding = '7px 12px';
+                refreshButton.style.borderRadius = '4px';
+                refreshButton.style.cursor = 'pointer';
+                
+                // 添加点击事件
+                refreshButton.addEventListener('click', function() {
+                    // 刷新当前标签页
+                    chrome.tabs.reload(tabId, {}, function() {
+                        showToastInPage('页面已刷新，请稍等片刻再试', 'info');
+                        setTimeout(() => {
+                            isRefreshPromptShown = false;
+                        }, 3000);
+                    });
+                });
+                
+                // 添加到状态区域
+                statusDiv.appendChild(document.createElement('br'));
+                statusDiv.appendChild(refreshButton);
+                
+                // 尝试自动注入内容脚本
+                try {
+                    chrome.scripting.executeScript({
+                        target: {tabId: tabId},
+                        files: ['content.js']
+                    }).then(() => {
+                        console.log('已尝试重新注入内容脚本');
+                        if (callback) callback();
+                    }).catch(err => {
+                        console.error('注入脚本失败:', err);
+                    });
+                } catch (err) {
+                    console.error('尝试注入脚本时出错:', err);
+                }
+            }
+            return true; // 表示已处理错误
+        }
+        return false; // 表示未处理错误
+    }
 
     // 加载保存的配置
     loadSavedConfig();
@@ -163,40 +224,146 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            chrome.tabs.sendMessage(tabs[0].id, {action: "extractXPaths"}, function(response) {
-                if (response && response.success) {
-                    showToastInPage(`已识别 ${response.count} 个表单元素`, 'success');
-                } else {
-                    showToastInPage('识别表单元素失败，请刷新页面后重试', 'error');
-                }
-            });
+            try {
+                // 先尝试检查内容脚本是否正常响应
+                chrome.tabs.sendMessage(tabs[0].id, {action: "ping"}, function(response) {
+                    // 处理可能的连接错误
+                    if (chrome.runtime.lastError) {
+                        if (handleConnectionError(chrome.runtime.lastError, tabs[0].id, () => {
+                            // 脚本重新注入后的回调，延迟执行表单识别
+                            setTimeout(() => {
+                                executeFormExtraction(tabs[0].id);
+                            }, 1000);
+                        })) {
+                            return;
+                        }
+                    }
+                    
+                    // 如果内容脚本响应了ping，或者出现了明确的错误，继续正常流程
+                    if (response && response.success) {
+                        executeFormExtraction(tabs[0].id);
+                    } else {
+                        // 如果没有响应也没有错误，可能是内容脚本未加载，尝试注入内容脚本
+                        console.log('内容脚本可能未加载，尝试重新注入...');
+                        chrome.scripting.executeScript({
+                            target: {tabId: tabs[0].id},
+                            files: ['content.js']
+                        }).then(() => {
+                            console.log('内容脚本注入成功，继续识别表单');
+                            // 延迟一点时间确保脚本加载完成
+                            setTimeout(() => {
+                                executeFormExtraction(tabs[0].id);
+                            }, 500);
+                        }).catch(error => {
+                            console.error('注入内容脚本失败:', error);
+                            showToastInPage('无法加载表单识别功能，请刷新页面后重试', 'error');
+                        });
+                    }
+                });
+            } catch (error) {
+                handleConnectionError(error, tabs[0].id);
+            }
         });
     });
+    
+    // 提取表单元素的函数，抽取为单独函数以便重用
+    function executeFormExtraction(tabId) {
+        chrome.tabs.sendMessage(tabId, {action: "extractXPaths"}, function(response) {
+            if (chrome.runtime.lastError) {
+                if (handleConnectionError(chrome.runtime.lastError, tabId)) {
+                    return;
+                }
+                console.error('发送消息时出错:', chrome.runtime.lastError);
+                showToastInPage('识别表单元素失败: ' + chrome.runtime.lastError.message, 'error');
+                return;
+            }
+            
+            if (response && response.success) {
+                showToastInPage(`已识别 ${response.count} 个表单元素`, 'success');
+            } else {
+                // 如果识别失败，尝试刷新页面内容脚本状态
+                chrome.scripting.executeScript({
+                    target: {tabId: tabId},
+                    function: () => {
+                        // 重置页面上可能的状态
+                        const highlights = document.querySelectorAll('.ai-form-highlight');
+                        highlights.forEach(el => el.classList.remove('ai-form-highlight'));
+                        return true;
+                    }
+                }).then(() => {
+                    // 再次尝试识别
+                    setTimeout(() => {
+                        chrome.tabs.sendMessage(tabId, {action: "extractXPaths"}, function(retryResponse) {
+                            if (chrome.runtime.lastError) {
+                                if (handleConnectionError(chrome.runtime.lastError, tabId)) {
+                                    return;
+                                }
+                                showToastInPage('识别表单元素失败: ' + chrome.runtime.lastError.message, 'error');
+                                return;
+                            }
+                            
+                            if (retryResponse && retryResponse.success) {
+                                showToastInPage(`已识别 ${retryResponse.count} 个表单元素`, 'success');
+                            } else {
+                                showToastInPage('识别表单元素失败，请刷新页面后重试', 'error');
+                            }
+                        });
+                    }, 300);
+                }).catch(error => {
+                    console.error('执行脚本时出错:', error);
+                    showToastInPage('识别表单元素失败，请刷新页面后重试', 'error');
+                });
+            }
+        });
+    }
 
     // 取消识别按钮点击事件
     removeHighlightsButton.addEventListener('click', function() {
+        // 如果正在移除高亮，则不重复执行
+        if (isHighlightBeingRemoved) {
+            return;
+        }
+        
+        isHighlightBeingRemoved = true;
         showToastInPage('正在移除高亮...', 'info');
         
         chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
             if (!tabs || !tabs[0] || !tabs[0].id) {
+                isHighlightBeingRemoved = false;
                 showToastInPage('无法获取当前标签页', 'error');
                 return;
             }
             
-            chrome.tabs.sendMessage(tabs[0].id, {action: "removeHighlights"}, function(response) {
-                if (response && response.success) {
-                    showToastInPage('已移除所有高亮', 'success');
-                    // 同时清除localStorage中的表单元素数据
-                    chrome.scripting.executeScript({
-                        target: {tabId: tabs[0].id},
-                        func: () => localStorage.removeItem('extractedElements')
-                    }).catch(error => {
-                        console.error('执行脚本时出错:', error);
-                    });
-                } else {
-                    showToastInPage('移除高亮失败，请刷新页面后重试', 'error');
-                }
-            });
+            try {
+                chrome.tabs.sendMessage(tabs[0].id, {action: "removeHighlights"}, function(response) {
+                    isHighlightBeingRemoved = false;
+                    
+                    // 处理可能的连接错误
+                    if (chrome.runtime.lastError) {
+                        if (handleConnectionError(chrome.runtime.lastError, tabs[0].id)) {
+                            return;
+                        }
+                        showToastInPage('移除高亮失败: ' + chrome.runtime.lastError.message, 'error');
+                        return;
+                    }
+                    
+                    if (response && response.success) {
+                        showToastInPage('已移除所有高亮', 'success');
+                        // 同时清除localStorage中的表单元素数据
+                        chrome.scripting.executeScript({
+                            target: {tabId: tabs[0].id},
+                            func: () => localStorage.removeItem('extractedElements')
+                        }).catch(error => {
+                            console.error('执行脚本时出错:', error);
+                        });
+                    } else {
+                        showToastInPage('移除高亮失败，请刷新页面后重试', 'error');
+                    }
+                });
+            } catch (error) {
+                isHighlightBeingRemoved = false;
+                handleConnectionError(error, tabs[0].id);
+            }
         });
     });
 
@@ -231,93 +398,181 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // 先执行表单识别
-            chrome.tabs.sendMessage(tabs[0].id, {action: "extractXPaths"}, async function(response) {
-                if (response && response.success) {
-                    showToastInPage(`已识别 ${response.count} 个表单元素，正在处理填充请求...`, 'success');
-                    
-                    // 从localStorage获取表单元素
-                    chrome.scripting.executeScript({
-                        target: {tabId: tabs[0].id},
-                        func: () => localStorage.getItem('extractedElements')
-                    }).then(async (result) => {
-                        if (result && result[0] && result[0].result) {
-                            try {
-                                const formElements = JSON.parse(result[0].result);
-                                
-                                // 调用大模型API
-                                showToastInPage('正在调用AI模型...', 'info');
-                                
-                                try {
-                                    const aiResponse = await callAIModel(config, userPrompt, formElements);
-                                    
-                                    // 在控制台记录AI返回的内容
-                                    console.log('AI模型返回的完整内容:', aiResponse);
-                                    
-                                    if (aiResponse && aiResponse.formActions) {
-                                        // 发送填充表单的指令
-                                        chrome.tabs.sendMessage(tabs[0].id, {
-                                            action: "fillFormElements",
-                                            formActions: aiResponse.formActions
-                                        }, function(fillResponse) {
-                                            // 结束AI请求，启用按钮
-                                            endAIRequest();
-                                            
-                                            if (fillResponse && fillResponse.success) {
-                                                showToastInPage(`已成功填充 ${fillResponse.count} 个表单元素`, 'success');
-                                                
-                                                // 自动触发清除识别
-                                                setTimeout(() => {
-                                                    chrome.tabs.sendMessage(tabs[0].id, {action: "removeHighlights"}, function(response) {
-                                                        if (response && response.success) {
-                                                            console.log('已自动移除所有高亮');
-                                                            // 同时清除localStorage中的表单元素数据
-                                                            chrome.scripting.executeScript({
-                                                                target: {tabId: tabs[0].id},
-                                                                func: () => localStorage.removeItem('extractedElements')
-                                                            });
-                                                        }
-                                                    });
-                                                }, 500); // 延迟500毫秒执行，确保填充完成
-                                            } else {
-                                                showToastInPage('填充表单失败，请重试', 'error');
-                                            }
-                                        });
-                                    } else {
-                                        // 结束AI请求，启用按钮
-                                        endAIRequest();
-                                        showToastInPage('无法理解如何填充表单，请尝试更清晰的描述', 'warning');
-                                    }
-                                } catch (error) {
-                                    // 结束AI请求，启用按钮
-                                    endAIRequest();
-                                    console.error('调用AI模型时出错:', error);
-                                    showToastInPage('调用AI模型时出错: ' + error.message, 'error');
-                                }
-                            } catch (error) {
-                                // 结束AI请求，启用按钮
-                                endAIRequest();
-                                console.error('处理表单填充时出错:', error);
-                                showToastInPage('处理请求时出错: ' + error.message, 'error');
-                            }
-                        } else {
-                            // 结束AI请求，启用按钮
+            try {
+                // 先检查内容脚本是否正常响应
+                chrome.tabs.sendMessage(tabs[0].id, {action: "ping"}, function(response) {
+                    // 处理可能的连接错误
+                    if (chrome.runtime.lastError) {
+                        if (handleConnectionError(chrome.runtime.lastError, tabs[0].id, () => {
+                            // 脚本重新注入后的回调，延迟执行表单识别和填充
+                            setTimeout(() => {
+                                executeFormRecognitionAndFill(tabs[0].id, config, userPrompt);
+                            }, 1000);
+                        })) {
                             endAIRequest();
-                            showToastInPage('无法获取表单元素，请刷新页面后重试', 'error');
+                            return;
                         }
-                    }).catch(error => {
                         endAIRequest();
-                        console.error('执行脚本时出错:', error);
-                        showToastInPage('执行脚本时出错: ' + error.message, 'error');
-                    });
-                } else {
-                    // 结束AI请求，启用按钮
-                    endAIRequest();
-                    showToastInPage('识别表单元素失败，请刷新页面后重试', 'error');
-                }
-            });
+                        showToastInPage('连接到页面失败: ' + chrome.runtime.lastError.message, 'error');
+                        return;
+                    }
+                    
+                    if (response && response.success) {
+                        // 内容脚本正常响应，继续执行表单识别和填充
+                        executeFormRecognitionAndFill(tabs[0].id, config, userPrompt);
+                    } else {
+                        // 内容脚本未正常响应，尝试重新注入
+                        injectContentScriptAndContinue(tabs[0].id, config, userPrompt);
+                    }
+                });
+            } catch (error) {
+                endAIRequest();
+                handleConnectionError(error, tabs[0].id);
+            }
         });
     });
+    
+    // 注入内容脚本并继续执行
+    function injectContentScriptAndContinue(tabId, config, userPrompt) {
+        console.log('尝试重新注入内容脚本...');
+        chrome.scripting.executeScript({
+            target: {tabId: tabId},
+            files: ['content.js']
+        }).then(() => {
+            console.log('内容脚本注入成功，继续识别和填充表单');
+            // 延迟一点时间确保脚本加载完成
+            setTimeout(() => {
+                executeFormRecognitionAndFill(tabId, config, userPrompt);
+            }, 500);
+        }).catch(error => {
+            console.error('注入内容脚本失败:', error);
+            endAIRequest();
+            showToastInPage('无法加载表单识别功能，请刷新页面后重试', 'error');
+        });
+    }
+    
+    // 执行表单识别和填充
+    function executeFormRecognitionAndFill(tabId, config, userPrompt) {
+        // 先执行表单识别
+        chrome.tabs.sendMessage(tabId, {action: "extractXPaths"}, async function(response) {
+            // 处理可能的错误
+            if (chrome.runtime.lastError) {
+                if (handleConnectionError(chrome.runtime.lastError, tabId)) {
+                    endAIRequest();
+                    return;
+                }
+                console.error('发送识别消息时出错:', chrome.runtime.lastError);
+                endAIRequest();
+                showToastInPage('识别表单元素失败: ' + chrome.runtime.lastError.message, 'error');
+                return;
+            }
+            
+            if (response && response.success) {
+                showToastInPage(`已识别 ${response.count} 个表单元素，正在处理填充请求...`, 'success');
+                
+                // 从localStorage获取表单元素
+                chrome.scripting.executeScript({
+                    target: {tabId: tabId},
+                    func: () => localStorage.getItem('extractedElements')
+                }).then(async (result) => {
+                    if (result && result[0] && result[0].result) {
+                        try {
+                            const formElements = JSON.parse(result[0].result);
+                            
+                            // 调用大模型API
+                            showToastInPage('正在调用AI模型...', 'info');
+                            
+                            try {
+                                const aiResponse = await callAIModel(config, userPrompt, formElements);
+                                
+                                // 在控制台记录AI返回的内容
+                                console.log('AI模型返回的完整内容:', aiResponse);
+                                
+                                if (aiResponse && aiResponse.formActions) {
+                                    // 发送填充表单的指令
+                                    chrome.tabs.sendMessage(tabId, {
+                                        action: "fillFormElements",
+                                        formActions: aiResponse.formActions
+                                    }, function(fillResponse) {
+                                        // 处理可能的错误
+                                        if (chrome.runtime.lastError) {
+                                            if (handleConnectionError(chrome.runtime.lastError, tabId)) {
+                                                endAIRequest();
+                                                return;
+                                            }
+                                            console.error('发送填充消息时出错:', chrome.runtime.lastError);
+                                            endAIRequest();
+                                            showToastInPage('填充表单失败: ' + chrome.runtime.lastError.message, 'error');
+                                            return;
+                                        }
+                                        
+                                        // 结束AI请求，启用按钮
+                                        endAIRequest();
+                                        
+                                        if (fillResponse && fillResponse.success) {
+                                            showToastInPage(`已成功填充 ${fillResponse.count} 个表单元素`, 'success');
+                                            
+                                            // 自动触发清除识别
+                                            setTimeout(() => {
+                                                // 如果正在移除高亮，则不重复执行
+                                                if (isHighlightBeingRemoved) {
+                                                    return;
+                                                }
+                                                
+                                                isHighlightBeingRemoved = true;
+                                                chrome.tabs.sendMessage(tabId, {action: "removeHighlights"}, function(response) {
+                                                    isHighlightBeingRemoved = false;
+                                                    
+                                                    // 处理可能的错误
+                                                    if (chrome.runtime.lastError) {
+                                                        if (handleConnectionError(chrome.runtime.lastError, tabId)) {
+                                                            return;
+                                                        }
+                                                        console.error('发送移除高亮消息时出错:', chrome.runtime.lastError);
+                                                        return;
+                                                    }
+                                                    
+                                                    if (response && response.success) {
+                                                        console.log('已自动移除所有高亮');
+                                                        // 同时清除localStorage中的表单元素数据
+                                                        chrome.scripting.executeScript({
+                                                            target: {tabId: tabId},
+                                                            func: () => localStorage.removeItem('extractedElements')
+                                                        });
+                                                    }
+                                                });
+                                            }, 500); // 延迟500毫秒执行，确保填充完成
+                                        } else {
+                                            showToastInPage('填充表单失败，请重试', 'error');
+                                        }
+                                    });
+                                } else {
+                                    endAIRequest();
+                                    showToastInPage('AI模型未返回有效的表单操作', 'error');
+                                }
+                            } catch (error) {
+                                endAIRequest();
+                                showToastInPage('调用AI模型失败: ' + error.message, 'error');
+                            }
+                        } catch (error) {
+                            endAIRequest();
+                            showToastInPage('解析表单元素数据失败: ' + error.message, 'error');
+                        }
+                    } else {
+                        endAIRequest();
+                        showToastInPage('未找到已识别的表单元素，请先识别表单', 'warning');
+                    }
+                }).catch(error => {
+                    endAIRequest();
+                    console.error('执行脚本时出错:', error);
+                    showToastInPage('获取表单元素失败: ' + error.message, 'error');
+                });
+            } else {
+                endAIRequest();
+                showToastInPage('识别表单元素失败，请刷新页面后重试', 'error');
+            }
+        });
+    }
 
     // 获取当前配置
     function getCurrentConfig() {
