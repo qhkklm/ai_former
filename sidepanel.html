@@ -7,12 +7,14 @@
         body {
             font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
             width: 100%;
-            height: 100vh;
+            min-height: 100vh;
             padding: 12px;
             background-color: #f8f9fa;
             margin: 0;
             box-sizing: border-box;
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
         }
         h1 {
             font-size: 16px;
@@ -160,79 +162,110 @@
                 margin-bottom: 16px;
             }
         }
+        
+        /* 主要内容区域 */
+        .main-content {
+            flex: 1;
+        }
+        
+        /* 二维码样式 */
+        .qrcode-container {
+            text-align: center;
+            margin-top: auto;
+            padding-top: 16px;
+            padding-bottom: 16px;
+        }
+        .qrcode-image {
+            max-width: 100%;
+            width: 300px;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
-    <h1>智能表单填充助手</h1>
-    
-    <div class="section">
-        <div class="section-title">模型配置</div>
-        <div class="radio-group">
-            <div class="radio-option">
-                <input type="radio" id="ollama" name="model-type" value="ollama" checked>
-                <label for="ollama">Ollama (本地)</label>
-            </div>
-            <div class="radio-option">
-                <input type="radio" id="qianwen" name="model-type" value="qianwen">
-                <label for="qianwen">通义千问 API</label>
-            </div>
-        </div>
+    <div class="main-content">
+        <h1>智能表单填充助手</h1>
         
-        <div id="ollama-config">
-            <div class="compact-row">
-                <div>
-                    <label for="ollama-url">Ollama 地址:</label>
-                    <input type="text" id="ollama-url" placeholder="http://localhost:11434" value="http://localhost:11434">
+        <div class="section">
+            <div class="section-title">模型配置</div>
+            <div class="radio-group">
+                <div class="radio-option">
+                    <input type="radio" id="ollama" name="model-type" value="ollama" checked>
+                    <label for="ollama">Ollama (本地)</label>
                 </div>
-                <div>
-                    <label for="ollama-model">Ollama 模型:</label>
-                    <select id="ollama-model">
-                        <option value="loading">正在加载...</option>
-                    </select>
+                <div class="radio-option">
+                    <input type="radio" id="qianwen" name="model-type" value="qianwen">
+                    <label for="qianwen">通义千问 API</label>
                 </div>
             </div>
             
-            <div id="custom-model-container" class="hidden">
-                <label for="custom-model-name">自定义模型名称:</label>
-                <input type="text" id="custom-model-name" placeholder="输入模型名称">
+            <div id="ollama-config">
+                <div class="compact-row">
+                    <div>
+                        <label for="ollama-url">Ollama 地址:</label>
+                        <input type="text" id="ollama-url" placeholder="http://localhost:11434" value="http://localhost:11434">
+                    </div>
+                    <div>
+                        <label for="ollama-model">Ollama 模型:</label>
+                        <select id="ollama-model">
+                            <option value="loading">正在加载...</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="custom-model-container" class="hidden">
+                    <label for="custom-model-name">自定义模型名称:</label>
+                    <input type="text" id="custom-model-name" placeholder="输入模型名称">
+                </div>
+            </div>
+            
+            <div id="qianwen-config" class="hidden">
+                <div class="compact-row">
+                    <div>
+                        <label for="qianwen-api-key">API Key:</label>
+                        <input type="text" id="qianwen-api-key" placeholder="输入您的API Key">
+                    </div>
+                    <div>
+                        <label for="qianwen-model">模型:</label>
+                        <select id="qianwen-model">
+                            <option value="qwen-turbo">千问-Turbo</option>
+                            <option value="qwen-plus">千问-Plus</option>
+                            <option value="qwen-max">千问-Max</option>
+                            <option value="qwen-max-longcontext">千问-Max长文本</option>
+                            <option value="qwen-vl-plus">千问-VL-Plus</option>
+                            <option value="qwen-vl-max">千问-VL-Max</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <div id="qianwen-config" class="hidden">
-            <div class="compact-row">
-                <div>
-                    <label for="qianwen-api-key">API Key:</label>
-                    <input type="text" id="qianwen-api-key" placeholder="输入您的API Key">
-                </div>
-                <div>
-                    <label for="qianwen-model">模型:</label>
-                    <select id="qianwen-model">
-                        <option value="qwen-plus">千问-Plus</option>
-                        <option value="qwen-max">千问-Max</option>
-                    </select>
-                </div>
+        <div class="section">
+            <div class="section-title">表单填充</div>
+            <label for="user-prompt">请输入您的要求:</label>
+            <textarea id="user-prompt" placeholder="例如：请帮我填写个人信息，我是30岁的软件工程师"></textarea>
+            <div class="shortcut-tip">
+                提示: 按 Ctrl+Enter 快速识别并填充表单
             </div>
+            
+            <button id="fill-form" title="快捷键: Ctrl+Enter">智能识别并填充表单</button>
+            <div style="display: flex; margin-top: 8px; gap: 8px;">
+                <button id="extract-form" style="flex: 1; background-color: #34a853;">识别表单</button>
+                <button id="remove-highlights" style="flex: 1; background-color: #ea4335;">清除识别</button>
+            </div>
+            
+            <!-- 加载指示器 -->
+            <div id="loading-indicator" class="loading-indicator"></div>
+            
+            <div id="status" class="status"></div>
         </div>
     </div>
     
-    <div class="section">
-        <div class="section-title">表单填充</div>
-        <label for="user-prompt">请输入您的要求:</label>
-        <textarea id="user-prompt" placeholder="例如：请帮我填写个人信息，我是30岁的软件工程师"></textarea>
-        <div class="shortcut-tip">
-            提示: 按 Ctrl+Enter 快速识别并填充表单
-        </div>
-        
-        <button id="fill-form" title="快捷键: Ctrl+Enter">智能识别并填充表单</button>
-        <div style="display: flex; margin-top: 8px; gap: 8px;">
-            <button id="extract-form" style="flex: 1; background-color: #34a853;">识别表单</button>
-            <button id="remove-highlights" style="flex: 1; background-color: #ea4335;">取消识别</button>
-        </div>
-        
-        <!-- 加载指示器 -->
-        <div id="loading-indicator" class="loading-indicator"></div>
-        
-        <div id="status" class="status"></div>
+    <!-- 二维码区域 -->
+    <div class="qrcode-container">
+        <img src="qrcode.png" alt="扫码关注" class="qrcode-image">
     </div>
     
     <script src="sidepanel.js"></script>

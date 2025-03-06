@@ -484,7 +484,7 @@ ${JSON.stringify(formElements, null, 2)}
             case 'qwen-max':
                 modelId = 'qwen-max';
             default:
-                modelId = 'qwen-turbo';
+                modelId = 'qwen-long';
         }
 
         const response = await fetch(url, {
