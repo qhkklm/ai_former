@@ -6,7 +6,7 @@
 
 1. **支持多种大模型**：
    - 本地 Ollama 模型调用（自动获取可用模型列表）
-   - 通义千问 API 调用（通过阿里云灵积平台DashScope）
+   - 通义千问 API 调用，通过阿里云百炼[](https://bailian.console.aliyun.com/?apiKey=1)
 
 2. **智能表单识别**：
    - 一键识别页面所有表单元素（包括iframe内的元素）
@@ -62,7 +62,7 @@
 
 - 使用Ollama需要在本地运行Ollama服务
 - 使用通义千问API需要有效的API密钥
-- 通义千问API调用会产生费用，请查看[阿里云灵积平台定价](https://help.aliyun.com/document_detail/583676.html)
+- 通义千问API调用会产生费用，请查看[阿里云灵积平台定价](https://help.aliyun.com/zh/model-studio/billing-for-model-studio)
 - 部分网站可能因安全限制无法识别或填充表单
 - 跨域iframe可能无法完全支持
 
