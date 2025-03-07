@@ -1,23 +1,133 @@
 document.addEventListener('DOMContentLoaded', function() {
     // 获取DOM元素
-    const modelTypeRadios = document.querySelectorAll('input[name="model-type"]');
-    const ollamaConfig = document.getElementById('ollama-config');
-    const qianwenConfig = document.getElementById('qianwen-config');
-    const ollamaModelSelect = document.getElementById('ollama-model');
-    const customModelContainer = document.getElementById('custom-model-container');
+    const modelProviderSelect = document.getElementById('model-provider');
+    const modelSelectionSelect = document.getElementById('model-selection');
+    const apiContainer = document.getElementById('api-container');
+    const apiKeyLabel = document.getElementById('api-key-label');
+    const apiKeyInput = document.getElementById('api-key');
+    const ollamaContainer = document.getElementById('ollama-container');
+    const ollamaUrlInput = document.getElementById('ollama-url');
+    
+    // 模型选择相关元素
+    const modelInput = document.getElementById('model-input');
+    const modelDropdown = document.getElementById('model-dropdown');
+    const modelList = document.getElementById('model-list');
+    const refreshModelsButton = document.getElementById('refresh-models');
+    
     const fillFormButton = document.getElementById('fill-form');
     const extractFormButton = document.getElementById('extract-form');
     const removeHighlightsButton = document.getElementById('remove-highlights');
     const statusDiv = document.getElementById('status');
-    const ollamaUrlInput = document.getElementById('ollama-url');
     const userPromptTextarea = document.getElementById('user-prompt');
     const loadingIndicator = document.getElementById('loading-indicator');
+    
+    // 反馈按钮和模态框相关元素
+    const feedbackLink = document.getElementById('feedback-link');
+    const feedbackModal = document.getElementById('feedback-modal');
+    const closeModalButton = document.getElementById('close-modal');
+    
+    // 初始隐藏下拉列表
+    modelDropdown.style.display = 'none';
+    
+    // 当前模型列表
+    let currentModels = [];
     
     // 添加一个变量来跟踪AI请求状态
     let isAIRequestInProgress = false;
     let aiRequestTimeoutId = null;
     let isHighlightBeingRemoved = false; // 添加标志位，跟踪是否正在移除高亮
     let isRefreshPromptShown = false; // 添加标志位，避免重复显示刷新提示
+
+    // 缓存每个供应商的配置
+    let providerConfigs = {
+        ollama: { url: 'http://localhost:11434', model: '' },
+        openai: { apiKey: '', model: '' },
+        qianwen: { apiKey: '', model: '' },
+        zhipu: { apiKey: '', model: '' },
+        minimax: { apiKey: '', model: '' },
+        deepseek: { apiKey: '', model: '' },
+        siliconflow: { apiKey: '', model: '' },
+        volcengine: { apiKey: '', model: '' }
+    };
+
+    // 模型配置
+    const modelConfigs = {
+        ollama: {
+            label: "Ollama 地址",
+            models: [] // 将动态获取
+        },
+        openai: {
+            label: "OpenAI API Key",
+            models: [] // 将动态获取
+        },
+        qianwen: {
+            label: "通义千问 API Key",
+            models: [] // 将动态获取
+        },
+        zhipu: {
+            label: "智谱 API Key",
+            models: [] // 将动态获取
+        },
+        minimax: {
+            label: "MiniMax API Key",
+            models: [] // 将动态获取
+        },
+        deepseek: {
+            label: "DeepSeek API Key",
+            models: [] // 将动态获取
+        },
+        siliconflow: {
+            label: "硅基流动 API Key",
+            models: [] // 将动态获取
+        },
+        volcengine: {
+            label: "火山引擎 API Key",
+            models: [] // 将动态获取
+        }
+    };
+
+    // 默认模型列表，作为备选
+    const defaultModels = {
+        openai: [
+            { value: "gpt-4o", label: "GPT-4o" },
+            { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
+            { value: "gpt-4", label: "GPT-4" },
+            { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" }
+        ],
+        qianwen: [
+            { value: "qwen-turbo", label: "千问-Turbo" },
+            { value: "qwen-plus", label: "千问-Plus" },
+            { value: "qwen-max", label: "千问-Max" }
+        ],
+        zhipu: [
+            { value: "GLM-4-Plus", label: "GLM-4-Plus" },
+            { value: "GLM-4-0520", label: "GLM-4-0520" },
+            { value: "GLM-4-Long", label: "GLM-4-Long" },
+            { value: "GLM-4-Flash", label: "GLM-4-Flash" },
+            { value: "GLM-4-Air", label: "GLM-4-Air" },
+            { value: "GLM-4-FlashX", label: "GLM-4-FlashX" }
+        ],
+        minimax: [
+            { value: "abab7-chat-preview", label: "abab7-chat-preview" },
+            { value: "abab6.5s-chat", label: "abab6.5s-chat" }
+        ],
+        deepseek: [
+            { value: "deepseek-chat", label: "deepseek-chat" },
+            { value: "deepseek-coder", label: "deepseek-coder" }
+        ],
+        siliconflow: [
+            { value: "Pro/deepseek-ai/DeepSeek-R1", label: "DeepSeek-R1" },
+            { value: "Pro/deepseek-ai/DeepSeek-V3", label: "DeepSeek-V3" },
+            { value: "Qwen/Qwen2.5-7B-Instruct", label: "Qwen2.5-7B-Instruct" }
+        ],
+        volcengine: [
+            { value: "deepseek-r1-250120", label: "deepseek-r1-250120" },
+            { value: "deepseek-v3-241226", label: "deepseek-v3-241226" },
+            { value: "doubao-1.5-pro-32k-250115", label: "doubao-1.5-pro-32k" },
+            { value: "moonshot-v1-8k", label: "moonshot-v1-8k" },
+            { value: "moonshot-v1-32k", label: "moonshot-v1-32k" }
+        ]
+    };
 
     // 通用错误处理函数，处理"Receiving end does not exist"错误
     function handleConnectionError(error, tabId, callback) {
@@ -79,60 +189,632 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // 加载保存的配置
-    loadSavedConfig();
-
-    // 切换模型类型时的事件处理
-    modelTypeRadios.forEach(radio => {
-        radio.addEventListener('change', function() {
-            if (this.value === 'ollama') {
-                ollamaConfig.classList.remove('hidden');
-                qianwenConfig.classList.add('hidden');
-                // 当切换到Ollama时，尝试获取模型列表
-                fetchOllamaModels();
-            } else if (this.value === 'qianwen') {
-                ollamaConfig.classList.add('hidden');
-                qianwenConfig.classList.remove('hidden');
+    function loadSavedConfig() {
+        chrome.storage.sync.get('modelConfig', function(data) {
+            if (data.modelConfig) {
+                const config = data.modelConfig;
+                
+                // 恢复所有供应商的缓存配置
+                if (config.providerConfigs) {
+                    providerConfigs = config.providerConfigs;
+                }
+                
+                // 设置模型提供商
+                modelProviderSelect.value = config.type;
+                // 初始化 previousProvider 数据属性
+                modelProviderSelect.dataset.previousProvider = config.type;
+                
+                // 更新UI
+                updateApiKeyConfig(config.type);
+                
+                // 加载该供应商的配置
+                loadProviderConfig(config.type);
+                
+                if (config.type === 'ollama') {
+                    // 尝试获取Ollama模型列表
+                    setTimeout(fetchOllamaModels, 100);
+                } else {
+                    // 如果有API Key，立即尝试获取模型列表
+                    if (providerConfigs[config.type].apiKey) {
+                        setTimeout(() => fetchModels(config.type, providerConfigs[config.type].apiKey), 100);
+                    } else {
+                        // 更新模型选择
+                        updateModelSelection(config.type);
+                    }
+                    
+                    // 设置模型
+                    setTimeout(() => {
+                        if (modelSelectionSelect.querySelector(`option[value="${config.model}"]`)) {
+                            modelSelectionSelect.value = config.model;
+                        }
+                    }, 300);
+                }
+            } else {
+                // 如果没有保存的配置，默认选择Ollama并获取模型列表
+                updateApiKeyConfig('ollama');
+                // 初始化 previousProvider 数据属性为 ollama
+                modelProviderSelect.dataset.previousProvider = 'ollama';
+                setTimeout(fetchOllamaModels, 100);
             }
-            saveConfig();
         });
-    });
+    }
 
-    // Ollama URL变化时，重新获取模型列表
-    ollamaUrlInput.addEventListener('change', function() {
-        fetchOllamaModels();
-    });
-
-    // Ollama模型选择变化时的事件处理
-    ollamaModelSelect.addEventListener('change', function() {
-        if (this.value === 'custom') {
-            customModelContainer.classList.remove('hidden');
-        } else {
-            customModelContainer.classList.add('hidden');
+    // 模型提供商变更事件
+    modelProviderSelect.addEventListener('change', function() {
+        const provider = this.value;
+        const previousProvider = this.dataset.previousProvider;
+        
+        // 保存上一个供应商的配置
+        if (previousProvider) {
+            saveProviderConfig(previousProvider);
         }
+        
+        // 更新UI
+        updateApiKeyConfig(provider);
+        
+        // 加载该供应商的缓存配置
+        loadProviderConfig(provider);
+        
+        // 更新模型选择
+        updateModelSelection(provider);
+        
+        // 记录当前供应商，用于下次切换时保存
+        this.dataset.previousProvider = provider;
+        
+        // 保存全局配置
         saveConfig();
     });
 
-    // 配置字段变化时保存配置
-    document.querySelectorAll('input[type="text"], select').forEach(element => {
-        element.addEventListener('change', saveConfig);
+    // 保存指定供应商的配置到缓存
+    function saveProviderConfig(provider) {
+        if (provider === 'ollama') {
+            providerConfigs.ollama.url = ollamaUrlInput.value;
+            providerConfigs.ollama.model = modelSelectionSelect.value;
+        } else {
+            providerConfigs[provider].apiKey = apiKeyInput.value;
+            providerConfigs[provider].model = modelSelectionSelect.value;
+        }
+    }
+
+    // 保存当前供应商的配置到缓存
+    function saveCurrentProviderConfig() {
+        const currentProvider = modelProviderSelect.value;
+        saveProviderConfig(currentProvider);
+    }
+
+    // 从缓存加载供应商配置
+    function loadProviderConfig(provider) {
+        if (provider === 'ollama') {
+            ollamaUrlInput.value = providerConfigs.ollama.url || 'http://127.0.0.1:11434';
+            // 清空 API Key 输入框，避免混淆
+            apiKeyInput.value = '';
+        } else {
+            // 从缓存中获取当前厂商的 API Key，如果没有则清空
+            apiKeyInput.value = providerConfigs[provider].apiKey || '';
+            // 清空 Ollama URL 输入框，避免混淆                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
+            ollamaUrlInput.value = '';
+        }
+    }
+
+    // 模型选择变更事件
+    modelSelectionSelect.addEventListener('change', function() {
+        // 更新当前供应商的缓存
+        const provider = modelProviderSelect.value;
+        if (provider === 'ollama') {
+            providerConfigs.ollama.model = this.value;
+        } else {
+            providerConfigs[provider].model = this.value;
+        }
+        
+        saveConfig();
     });
 
-    // 为用户输入框添加快捷键（Ctrl + Enter）
-    userPromptTextarea.addEventListener('keydown', function(e) {
-        // 检查是否按下了Ctrl+Enter
-        if (e.ctrlKey && e.key === 'Enter') {
-            e.preventDefault(); // 阻止默认行为
+    // API Key变更事件
+    apiKeyInput.addEventListener('change', function() {
+        const provider = modelProviderSelect.value;
+        if (provider !== 'ollama') {
+            // 更新当前供应商的缓存
+            providerConfigs[provider].apiKey = this.value;
             
-            // 如果AI请求正在进行中，则不执行操作
-            if (isAIRequestInProgress) {
-                showToastInPage('请等待当前请求完成', 'warning');
-                return;
-            }
+            // 当API Key变化时，尝试获取模型列表
+            fetchModels(provider, this.value);
+        }
+        saveConfig();
+    });
+    
+    // API Key失焦事件
+    apiKeyInput.addEventListener('blur', function() {
+        const provider = modelProviderSelect.value;
+        if (provider !== 'ollama' && this.value.trim()) {
+            // 更新当前供应商的缓存
+            providerConfigs[provider].apiKey = this.value;
             
-            fillFormButton.click(); // 触发填充按钮的点击事件
-            showToastInPage('使用快捷键 Ctrl+Enter 触发填充', 'info', 1500);
+            // 当API Key失焦且有值时，尝试获取模型列表
+            fetchModels(provider, this.value);
         }
     });
+
+    // Ollama URL变更事件
+    ollamaUrlInput.addEventListener('change', function() {
+        // 更新Ollama的缓存
+        providerConfigs.ollama.url = this.value;
+        
+        fetchOllamaModels();
+        saveConfig();
+    });
+    
+    // Ollama URL失焦事件
+    ollamaUrlInput.addEventListener('blur', function() {
+        if (this.value.trim()) {
+            // 更新Ollama的缓存
+            providerConfigs.ollama.url = this.value;
+            
+            // 当Ollama URL失焦且有值时，尝试获取模型列表
+            fetchOllamaModels();
+        }
+    });
+
+    // 更新API Key配置
+    function updateApiKeyConfig(provider) {
+        // 定义帮助链接
+        const helpLinks = {
+            'openai': 'https://platform.openai.com/api-keys',
+            'ernie': 'https://console.bce.baidu.com/qianfan/overview',
+            'dashscope': 'https://bailian.console.aliyun.com/?apiKey=1',
+            'zhipu': 'https://open.bigmodel.cn/usercenter/apikeys',
+            'minimax': 'https://platform.minimaxi.com/user-center/basic-information/interface-key',
+            'ollama': 'https://ollama.com',
+            'deepseek': 'https://platform.deepseek.com/',
+            'siliconflow': 'https://cloud.siliconflow.cn/i/gQhQNfpv',
+            'volcengine': 'https://volcengine.com/L/i594ULBE/'
+        };
+
+        if (provider === 'ollama') {
+            apiContainer.classList.add('hidden');
+            ollamaContainer.classList.remove('hidden');
+        } else {
+            apiContainer.classList.remove('hidden');
+            ollamaContainer.classList.add('hidden');
+            
+            // 创建标签文本和帮助链接
+            const labelText = modelConfigs[provider].label;
+            // 对于通义千问，使用ernie的链接
+            const helpLink = (provider === 'qianwen') ? helpLinks['ernie'] : 
+                             (provider === 'dashscope') ? helpLinks['dashscope'] : 
+                             helpLinks[provider] || '#';
+            
+            // 设置标签内容，包含超链接
+            apiKeyLabel.innerHTML = `${labelText} <a href="${helpLink}" target="_blank" title="获取 ${labelText}" class="api-key-link">获取 Key</a>`;
+        }
+    }
+
+    // 更新模型选择下拉框
+    function updateModelSelection(provider) {
+        // 清空当前选项
+        modelSelectionSelect.innerHTML = '';
+        
+        // 重置输入框
+        modelInput.value = '';
+        
+        if (provider === 'ollama') {
+            const option = document.createElement('option');
+            option.value = 'loading';
+            option.textContent = '正在加载...';
+            modelSelectionSelect.appendChild(option);
+            
+            // 更新输入框
+            modelInput.placeholder = '正在加载...';
+            
+            // 尝试获取Ollama模型列表
+            setTimeout(fetchOllamaModels, 100);
+        } else {
+            // 检查是否有缓存的模型列表
+            if (modelConfigs[provider].models.length > 0) {
+                // 使用缓存的模型列表
+                populateModelSelection(modelConfigs[provider].models);
+                
+                // 如果有保存的配置，尝试选择之前选择的模型
+                if (providerConfigs[provider].model) {
+                    setTimeout(() => {
+                        if (modelSelectionSelect.querySelector(`option[value="${providerConfigs[provider].model}"]`)) {
+                            modelSelectionSelect.value = providerConfigs[provider].model;
+                            
+                            // 更新输入框
+                            const selectedOption = modelSelectionSelect.querySelector(`option[value="${providerConfigs[provider].model}"]`);
+                            if (selectedOption) {
+                                modelInput.value = selectedOption.textContent;
+                            }
+                        }
+                    }, 100);
+                }
+            } else {
+                // 使用默认模型列表
+                populateModelSelection(defaultModels[provider] || []);
+                
+                // 如果有API Key，立即尝试获取模型列表
+                const apiKey = apiKeyInput.value.trim();
+                if (apiKey) {
+                    setTimeout(() => fetchModels(provider, apiKey), 100);
+                } else {
+                    // 显示提示，需要输入API Key获取更多模型
+                    modelInput.placeholder = '请输入API Key获取更多模型';
+                    
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = '请输入API Key获取更多模型';
+                    modelSelectionSelect.appendChild(option);
+                }
+            }
+        }
+    }
+
+    // 填充模型选择下拉框
+    function populateModelSelection(models) {
+        // 更新当前模型列表
+        currentModels = models;
+        
+        // 清空当前选项
+        modelSelectionSelect.innerHTML = '';
+        
+        if (models.length === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = '未找到模型';
+            modelSelectionSelect.appendChild(option);
+            
+            // 更新输入框
+            modelInput.value = '';
+            modelInput.placeholder = '未找到模型';
+        } else {
+            // 添加模型选项到隐藏的 select
+            models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.value;
+                option.textContent = model.label;
+                modelSelectionSelect.appendChild(option);
+            });
+            
+            // 获取当前提供商
+            const provider = modelProviderSelect.value;
+            
+            // 根据提供商设置建议值
+            let suggestedModel = null;
+            switch (provider) {
+                case 'openai':
+                    suggestedModel = models.find(m => m.value === 'gpt-4o-mini');
+                    break;
+                case 'qianwen':
+                    suggestedModel = models.find(m => m.value === 'qwen-long');
+                    break;
+                case 'zhipu':
+                    suggestedModel = models.find(m => m.value === 'GLM-4-Long');
+                    break;
+                case 'deepseek':
+                    suggestedModel = models.find(m => m.value === 'deepseek-chat');
+                    break;
+                case 'siliconflow':
+                    suggestedModel = models.find(m => m.value === 'Qwen2.5-32B-Instruct');
+                    break;
+                case 'volcengine':
+                    suggestedModel = models.find(m => m.value === 'moonshot-v1-32k');
+                    break;
+            }
+            
+            // 如果找到建议值，使用它；否则使用第一个模型
+            const modelToSelect = suggestedModel || models[0];
+            modelSelectionSelect.value = modelToSelect.value;
+            modelInput.value = modelToSelect.label;
+        }
+        
+        // 渲染下拉列表
+        renderModelList(models);
+        
+        // 如果下拉列表是可见的，更新它
+        if (modelDropdown.style.display === 'block') {
+            showModelDropdown();
+        }
+    }
+
+    // 获取模型列表
+    async function fetchModels(provider, apiKey, retryCount = 3) {
+        if (!apiKey) return;
+        
+        // 显示加载状态
+        showToastInPage(`正在获取${modelConfigs[provider].label.split(' ')[0]}模型列表...`, 'info');
+        setButtonsState(true); // 禁用按钮
+        
+        let attempt = 0;
+        
+        while (attempt < retryCount) {
+            try {
+                let models = [];
+                
+                switch (provider) {
+                    case 'openai':
+                        models = await fetchOpenAIModels(apiKey);
+                        break;
+                    case 'qianwen':
+                        models = await fetchQianwenModels(apiKey);
+                        break;
+                    case 'zhipu':
+                        models = await fetchZhipuModels(apiKey);
+                        break;
+                    case 'minimax':
+                        models = await fetchMinimaxModels(apiKey);
+                        break;
+                    case 'deepseek':
+                        models = await fetchDeepSeekModels(apiKey);
+                        break;
+                    case 'siliconflow':
+                        models = await fetchSiliconFlowModels(apiKey);
+                        break;
+                    case 'volcengine':
+                        models = await fetchVolcengineModels(apiKey);
+                        break;
+                    default:
+                        // 使用默认模型列表
+                        models = defaultModels[provider] || [];
+                }
+                
+                // 更新模型配置
+                modelConfigs[provider].models = models;
+                
+                // 更新模型选择下拉框
+                populateModelSelection(models);
+                
+                // 如果有保存的配置，尝试选择之前选择的模型
+                chrome.storage.sync.get('modelConfig', function(data) {
+                    if (data.modelConfig && data.modelConfig.type === provider && data.modelConfig.model) {
+                        // 检查是否存在该模型选项
+                        if (modelSelectionSelect.querySelector(`option[value="${data.modelConfig.model}"]`)) {
+                            modelSelectionSelect.value = data.modelConfig.model;
+                        }
+                    }
+                });
+                
+                showToastInPage(`成功获取到 ${models.length} 个${modelConfigs[provider].label.split(' ')[0]}模型`, 'info');
+                setButtonsState(false); // 启用按钮
+                return models;
+                
+            } catch (error) {
+                attempt++;
+                console.error(`获取${provider}模型列表失败 (尝试 ${attempt}/${retryCount}):`, error);
+                
+                // 检查是否是连接错误
+                if (error.message && error.message.includes("Receiving end does not exist")) {
+                    showToastInPage(`连接错误: 无法与页面通信，可能需要刷新页面`, 'error');
+                    setButtonsState(false); // 启用按钮
+                    return defaultModels[provider] || [];
+                }
+                
+                if (attempt < retryCount) {
+                    // 指数退避重试
+                    const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+                    showToastInPage(`获取模型列表失败，${delay/1000}秒后重试...`, 'warning');
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                } else {
+                    // 最后一次尝试失败，使用默认模型列表
+                    modelConfigs[provider].models = defaultModels[provider] || [];
+                    populateModelSelection(modelConfigs[provider].models);
+                    showToastInPage(`获取模型列表失败: ${error.message}，使用默认列表`, 'error');
+                    setButtonsState(false); // 启用按钮
+                }
+            }
+        }
+        
+        return defaultModels[provider] || [];
+    }
+
+    // 获取OpenAI模型列表
+    async function fetchOpenAIModels(apiKey) {
+        try {
+            const response = await fetch('https://api.openai.com/v1/models', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`API请求失败: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // 过滤出聊天模型
+            const chatModels = data.data
+                .filter(model => model.id.includes('gpt'))
+                .map(model => ({
+                    value: model.id,
+                    label: model.id
+                }));
+            
+            return chatModels.length > 0 ? chatModels : defaultModels.openai;
+        } catch (error) {
+            console.error('获取OpenAI模型列表失败:', error);
+            return defaultModels.openai;
+        }
+    }
+
+    // 获取通义千问模型列表
+    async function fetchQianwenModels(apiKey) {
+        try {
+            const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/models', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`API请求失败: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // 转换为所需格式
+            const models = data.data
+                .filter(model => model.id.includes('qwen'))
+                .map(model => ({
+                    value: model.id,
+                    label: model.id
+                }));
+            
+            return models.length > 0 ? models : defaultModels.qianwen;
+        } catch (error) {
+            console.error('获取通义千问模型列表失败:', error);
+            return defaultModels.qianwen;
+        }
+    }
+
+    // 获取智谱模型列表
+    async function fetchZhipuModels(apiKey) {
+        try {
+            const response = await fetch('https://open.bigmodel.cn/api/paas/v4/models', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`API请求失败: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // 转换为所需格式
+            const models = data.data
+                .filter(model => model.id.includes('GLM'))
+                .map(model => ({
+                    value: model.id,
+                    label: model.id
+                }));
+            
+            return models.length > 0 ? models : defaultModels.zhipu;
+        } catch (error) {
+            console.error('获取智谱模型列表失败:', error);
+            return defaultModels.zhipu;
+        }
+    }
+
+    // 获取Minimax模型列表
+    async function fetchMinimaxModels(apiKey) {
+        try {
+            const response = await fetch('https://api.minimax.chat/v1/models', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`API请求失败: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // 转换为所需格式
+            const models = data.data
+                .filter(model => model.id.includes('chat'))
+                .map(model => ({
+                    value: model.id,
+                    label: model.id
+                }));
+            
+            return models.length > 0 ? models : defaultModels.minimax;
+        } catch (error) {
+            console.error('获取Minimax模型列表失败:', error);
+            return defaultModels.minimax;
+        }
+    }
+
+    // 获取DeepSeek模型列表
+    async function fetchDeepSeekModels(apiKey) {
+        try {
+            const response = await fetch('https://api.deepseek.com/v1/models', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`API请求失败: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // 转换为所需格式
+            const models = data.data.map(model => ({
+                value: model.id,
+                label: model.id
+            }));
+            
+            return models.length > 0 ? models : defaultModels.deepseek;
+        } catch (error) {
+            console.error('获取DeepSeek模型列表失败:', error);
+            return defaultModels.deepseek;
+        }
+    }
+
+    // 获取硅基流动模型列表
+    async function fetchSiliconFlowModels(apiKey) {
+        try {
+            const response = await fetch('https://api.siliconflow.cn/v1/models', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`API请求失败: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // 转换为所需格式
+            const models = data.data.map(model => ({
+                value: model.id,
+                label: model.id.split('/').pop() || model.id // 提取模型名称作为标签
+            }));
+            
+            return models.length > 0 ? models : defaultModels.siliconflow;
+        } catch (error) {
+            console.error('获取硅基流动模型列表失败:', error);
+            return defaultModels.siliconflow;
+        }
+    }
+
+    // 获取火山引擎模型列表
+    async function fetchVolcengineModels(apiKey) {
+        try {
+            const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/models', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`API请求失败: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // 转换为所需格式
+            const models = data.data.map(model => ({
+                value: model.id,
+                label: model.id
+            }));
+            
+            return models.length > 0 ? models : defaultModels.volcengine;
+        } catch (error) {
+            console.error('获取火山引擎模型列表失败:', error);
+            return defaultModels.volcengine;
+        }
+    }
 
     // 设置按钮状态的函数
     function setButtonsState(disabled) {
@@ -174,7 +856,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // 在页面上显示toast消息
+    // 在页面中显示Toast消息
     function showToastInPage(message, type = 'info', duration = 3000) {
         // 更新状态文本
         statusDiv.textContent = message;
@@ -214,160 +896,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 识别页面表单按钮点击事件
-    extractFormButton.addEventListener('click', function() {
-        showToastInPage('正在识别页面表单元素...', 'info');
-        
-        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-            if (!tabs || !tabs[0] || !tabs[0].id) {
-                showToastInPage('无法获取当前标签页', 'error');
-                return;
-            }
-            
-            try {
-                // 先尝试检查内容脚本是否正常响应
-                chrome.tabs.sendMessage(tabs[0].id, {action: "ping"}, function(response) {
-                    // 处理可能的连接错误
-                    if (chrome.runtime.lastError) {
-                        if (handleConnectionError(chrome.runtime.lastError, tabs[0].id, () => {
-                            // 脚本重新注入后的回调，延迟执行表单识别
-                            setTimeout(() => {
-                                executeFormExtraction(tabs[0].id);
-                            }, 1000);
-                        })) {
-                            return;
-                        }
-                    }
-                    
-                    // 如果内容脚本响应了ping，或者出现了明确的错误，继续正常流程
-                    if (response && response.success) {
-                        executeFormExtraction(tabs[0].id);
-                    } else {
-                        // 如果没有响应也没有错误，可能是内容脚本未加载，尝试注入内容脚本
-                        console.log('内容脚本可能未加载，尝试重新注入...');
-                        chrome.scripting.executeScript({
-                            target: {tabId: tabs[0].id},
-                            files: ['content.js']
-                        }).then(() => {
-                            console.log('内容脚本注入成功，继续识别表单');
-                            // 延迟一点时间确保脚本加载完成
-                            setTimeout(() => {
-                                executeFormExtraction(tabs[0].id);
-                            }, 500);
-                        }).catch(error => {
-                            console.error('注入内容脚本失败:', error);
-                            showToastInPage('无法加载表单识别功能，请刷新页面后重试', 'error');
-                        });
-                    }
-                });
-            } catch (error) {
-                handleConnectionError(error, tabs[0].id);
-            }
-        });
-    });
-    
-    // 提取表单元素的函数，抽取为单独函数以便重用
-    function executeFormExtraction(tabId) {
-        chrome.tabs.sendMessage(tabId, {action: "extractXPaths"}, function(response) {
-            if (chrome.runtime.lastError) {
-                if (handleConnectionError(chrome.runtime.lastError, tabId)) {
-                    return;
-                }
-                console.error('发送消息时出错:', chrome.runtime.lastError);
-                showToastInPage('识别表单元素失败: ' + chrome.runtime.lastError.message, 'error');
-                return;
-            }
-            
-            if (response && response.success) {
-                showToastInPage(`已识别 ${response.count} 个表单元素`, 'success');
-            } else {
-                // 如果识别失败，尝试刷新页面内容脚本状态
-                chrome.scripting.executeScript({
-                    target: {tabId: tabId},
-                    function: () => {
-                        // 重置页面上可能的状态
-                        const highlights = document.querySelectorAll('.ai-form-highlight');
-                        highlights.forEach(el => el.classList.remove('ai-form-highlight'));
-                        return true;
-                    }
-                }).then(() => {
-                    // 再次尝试识别
-                    setTimeout(() => {
-                        chrome.tabs.sendMessage(tabId, {action: "extractXPaths"}, function(retryResponse) {
-                            if (chrome.runtime.lastError) {
-                                if (handleConnectionError(chrome.runtime.lastError, tabId)) {
-                                    return;
-                                }
-                                showToastInPage('识别表单元素失败: ' + chrome.runtime.lastError.message, 'error');
-                                return;
-                            }
-                            
-                            if (retryResponse && retryResponse.success) {
-                                showToastInPage(`已识别 ${retryResponse.count} 个表单元素`, 'success');
-                            } else {
-                                showToastInPage('识别表单元素失败，请刷新页面后重试', 'error');
-                            }
-                        });
-                    }, 300);
-                }).catch(error => {
-                    console.error('执行脚本时出错:', error);
-                    showToastInPage('识别表单元素失败，请刷新页面后重试', 'error');
-                });
-            }
-        });
-    }
-
-    // 取消识别按钮点击事件
-    removeHighlightsButton.addEventListener('click', function() {
-        // 如果正在移除高亮，则不重复执行
-        if (isHighlightBeingRemoved) {
-            return;
-        }
-        
-        isHighlightBeingRemoved = true;
-        showToastInPage('正在移除高亮...', 'info');
-        
-        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-            if (!tabs || !tabs[0] || !tabs[0].id) {
-                isHighlightBeingRemoved = false;
-                showToastInPage('无法获取当前标签页', 'error');
-                return;
-            }
-            
-            try {
-                chrome.tabs.sendMessage(tabs[0].id, {action: "removeHighlights"}, function(response) {
-                    isHighlightBeingRemoved = false;
-                    
-                    // 处理可能的连接错误
-                    if (chrome.runtime.lastError) {
-                        if (handleConnectionError(chrome.runtime.lastError, tabs[0].id)) {
-                            return;
-                        }
-                        showToastInPage('移除高亮失败: ' + chrome.runtime.lastError.message, 'error');
-                        return;
-                    }
-                    
-                    if (response && response.success) {
-                        showToastInPage('已移除所有高亮', 'success');
-                        // 同时清除localStorage中的表单元素数据
-                        chrome.scripting.executeScript({
-                            target: {tabId: tabs[0].id},
-                            func: () => localStorage.removeItem('extractedElements')
-                        }).catch(error => {
-                            console.error('执行脚本时出错:', error);
-                        });
-                    } else {
-                        showToastInPage('移除高亮失败，请刷新页面后重试', 'error');
-                    }
-                });
-            } catch (error) {
-                isHighlightBeingRemoved = false;
-                handleConnectionError(error, tabs[0].id);
-            }
-        });
-    });
-
-    // 智能填充表单按钮点击事件
+    // 填充表单按钮点击事件
     fillFormButton.addEventListener('click', function() {
         // 如果AI请求正在进行中，则不执行操作
         if (isAIRequestInProgress) {
@@ -431,7 +960,160 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // 提取表单按钮点击事件
+    extractFormButton.addEventListener('click', function() {
+        showToastInPage('正在识别页面表单元素...', 'info');
+        
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            if (!tabs || !tabs[0] || !tabs[0].id) {
+                showToastInPage('无法获取当前标签页', 'error');
+                return;
+            }
+            
+            try {
+                // 先尝试检查内容脚本是否正常响应
+                chrome.tabs.sendMessage(tabs[0].id, {action: "ping"}, function(response) {
+                    // 处理可能的连接错误
+                    if (chrome.runtime.lastError) {
+                        if (handleConnectionError(chrome.runtime.lastError, tabs[0].id, () => {
+                            // 脚本重新注入后的回调，延迟执行表单识别
+                            setTimeout(() => {
+                                executeFormExtraction(tabs[0].id);
+                            }, 1000);
+                        })) {
+                            return;
+                        }
+                    }
+                    
+                    // 如果内容脚本响应了ping，或者出现了明确的错误，继续正常流程
+                    if (response && response.success) {
+                        executeFormExtraction(tabs[0].id);
+                    } else {
+                        // 如果没有响应也没有错误，可能是内容脚本未加载，尝试注入内容脚本
+                        console.log('内容脚本可能未加载，尝试重新注入...');
+                        chrome.scripting.executeScript({
+                            target: {tabId: tabs[0].id},
+                            files: ['content.js']
+                        }).then(() => {
+                            console.log('内容脚本注入成功，继续识别表单');
+                            // 延迟一点时间确保脚本加载完成
+                            setTimeout(() => {
+                                executeFormExtraction(tabs[0].id);
+                            }, 500);
+                        }).catch(error => {
+                            console.error('注入内容脚本失败:', error);
+                            showToastInPage('无法加载表单识别功能，请刷新页面后重试', 'error');
+                        });
+                    }
+                });
+            } catch (error) {
+                handleConnectionError(error, tabs[0].id);
+            }
+        });
+    });
     
+    // 移除高亮按钮点击事件
+    removeHighlightsButton.addEventListener('click', function() {
+        // 如果正在移除高亮，则不重复执行
+        if (isHighlightBeingRemoved) {
+            return;
+        }
+        
+        isHighlightBeingRemoved = true;
+        showToastInPage('正在移除高亮...', 'info');
+        
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            if (!tabs || !tabs[0] || !tabs[0].id) {
+                isHighlightBeingRemoved = false;
+                showToastInPage('无法获取当前标签页', 'error');
+                return;
+            }
+            
+            try {
+                chrome.tabs.sendMessage(tabs[0].id, {action: "removeHighlights"}, function(response) {
+                    isHighlightBeingRemoved = false;
+                    
+                    // 处理可能的连接错误
+                    if (chrome.runtime.lastError) {
+                        if (handleConnectionError(chrome.runtime.lastError, tabs[0].id)) {
+                            return;
+                        }
+                        showToastInPage('移除高亮失败: ' + chrome.runtime.lastError.message, 'error');
+                        return;
+                    }
+                    
+                    if (response && response.success) {
+                        showToastInPage('已移除所有高亮', 'success');
+                        // 同时清除localStorage中的表单元素数据
+                        chrome.scripting.executeScript({
+                            target: {tabId: tabs[0].id},
+                            func: () => localStorage.removeItem('extractedElements')
+                        }).catch(error => {
+                            console.error('执行脚本时出错:', error);
+                        });
+                    } else {
+                        showToastInPage('移除高亮失败，请刷新页面后重试', 'error');
+                    }
+                });
+            } catch (error) {
+                isHighlightBeingRemoved = false;
+                handleConnectionError(error, tabs[0].id);
+            }
+        });
+    });
+
+    // 执行表单提取
+    function executeFormExtraction(tabId) {
+        chrome.tabs.sendMessage(tabId, {action: "extractXPaths"}, function(response) {
+            if (chrome.runtime.lastError) {
+                if (handleConnectionError(chrome.runtime.lastError, tabId)) {
+                    return;
+                }
+                console.error('发送消息时出错:', chrome.runtime.lastError);
+                showToastInPage('识别表单元素失败: ' + chrome.runtime.lastError.message, 'error');
+                return;
+            }
+            
+            if (response && response.success) {
+                showToastInPage(`已识别 ${response.count} 个表单元素`, 'success');
+            } else {
+                // 如果识别失败，尝试刷新页面内容脚本状态
+                chrome.scripting.executeScript({
+                    target: {tabId: tabId},
+                    function: () => {
+                        // 重置页面上可能的状态
+                        const highlights = document.querySelectorAll('.ai-form-highlight');
+                        highlights.forEach(el => el.classList.remove('ai-form-highlight'));
+                        return true;
+                    }
+                }).then(() => {
+                    // 再次尝试识别
+                    setTimeout(() => {
+                        chrome.tabs.sendMessage(tabId, {action: "extractXPaths"}, function(retryResponse) {
+                            if (chrome.runtime.lastError) {
+                                if (handleConnectionError(chrome.runtime.lastError, tabId)) {
+                                    return;
+                                }
+                                showToastInPage('识别表单元素失败: ' + chrome.runtime.lastError.message, 'error');
+                                return;
+                            }
+                            
+                            if (retryResponse && retryResponse.success) {
+                                showToastInPage(`已识别 ${retryResponse.count} 个表单元素`, 'success');
+                            } else {
+                                showToastInPage('识别表单元素失败，请刷新页面后重试', 'error');
+                            }
+                        });
+                    }, 300);
+                }).catch(error => {
+                    console.error('执行脚本时出错:', error);
+                    showToastInPage('识别表单元素失败，请刷新页面后重试', 'error');
+                });
+            }
+        });
+    }
+
     // 注入内容脚本并继续执行
     function injectContentScriptAndContinue(tabId, config, userPrompt) {
         console.log('尝试重新注入内容脚本...');
@@ -560,7 +1242,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     } else {
                         endAIRequest();
-                        showToastInPage('未找到已识别的表单元素，请先识别表单', 'warning');
+                        showToastInPage('识别表单元素失败，请刷新页面后重试', 'error');
                     }
                 }).catch(error => {
                     endAIRequest();
@@ -576,30 +1258,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 获取当前配置
     function getCurrentConfig() {
-        const modelType = document.querySelector('input[name="model-type"]:checked').value;
+        const provider = modelProviderSelect.value;
         
-        if (modelType === 'ollama') {
-            const ollamaUrl = document.getElementById('ollama-url').value;
-            const ollamaModelValue = document.getElementById('ollama-model').value;
-            let modelName = ollamaModelValue;
-            
-            if (ollamaModelValue === 'custom') {
-                modelName = document.getElementById('custom-model-name').value;
-            }
-            
+        if (provider === 'ollama') {
             return {
                 type: 'ollama',
-                url: ollamaUrl,
-                model: modelName
+                url: ollamaUrlInput.value,
+                model: modelSelectionSelect.value,
+                providerConfigs: providerConfigs  // 保存所有供应商的配置
             };
-        } else if (modelType === 'qianwen') {
-            const apiKey = document.getElementById('qianwen-api-key').value;
-            const model = document.getElementById('qianwen-model').value;
-            
+        } else {
             return {
-                type: 'qianwen',
-                apiKey: apiKey,
-                model: model
+                type: provider,
+                apiKey: apiKeyInput.value,
+                model: modelSelectionSelect.value,
+                providerConfigs: providerConfigs  // 保存所有供应商的配置
             };
         }
     }
@@ -612,54 +1285,25 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 加载保存的配置
-    function loadSavedConfig() {
-        chrome.storage.sync.get('modelConfig', function(data) {
-            if (data.modelConfig) {
-                const config = data.modelConfig;
-                
-                // 设置模型类型
-                document.querySelector(`input[name="model-type"][value="${config.type}"]`).checked = true;
-                
-                if (config.type === 'ollama') {
-                    ollamaConfig.classList.remove('hidden');
-                    qianwenConfig.classList.add('hidden');
-                    
-                    // 设置Ollama URL
-                    document.getElementById('ollama-url').value = config.url || 'http://localhost:11434';
-                    
-                    // 设置自定义模型名称（如果有）
-                    if (config.model && config.model !== 'custom') {
-                        document.getElementById('custom-model-name').value = config.model;
-                    }
-                    
-                    // 尝试获取Ollama模型列表
-                    setTimeout(fetchOllamaModels, 500);
-                    
-                } else if (config.type === 'qianwen') {
-                    ollamaConfig.classList.add('hidden');
-                    qianwenConfig.classList.remove('hidden');
-                    
-                    // 设置通义千问API Key
-                    document.getElementById('qianwen-api-key').value = config.apiKey || '';
-                    
-                    // 设置通义千问模型
-                    document.getElementById('qianwen-model').value = config.model || 'qwen-turbo';
-                }
-            } else {
-                // 如果没有保存的配置，尝试获取Ollama模型列表
-                setTimeout(fetchOllamaModels, 500);
-            }
-        });
-    }
-
     // 调用AI模型API
     async function callAIModel(config, userPrompt, formElements) {
         try {
             if (config.type === 'ollama') {
                 return await callOllamaAPI(config, userPrompt, formElements);
+            } else if (config.type === 'openai') {
+                return await callOpenAIAPI(config, userPrompt, formElements);
             } else if (config.type === 'qianwen') {
                 return await callQianwenAPI(config, userPrompt, formElements);
+            } else if (config.type === 'zhipu') {
+                return await callZhipuAPI(config, userPrompt, formElements);
+            } else if (config.type === 'minimax') {
+                return await callMinimaxAPI(config, userPrompt, formElements);
+            } else if (config.type === 'deepseek') {
+                return await callDeepSeekAPI(config, userPrompt, formElements);
+            } else if (config.type === 'siliconflow') {
+                return await callSiliconFlowAPI(config, userPrompt, formElements);
+            } else if (config.type === 'volcengine') {
+                return await callVolcengineAPI(config, userPrompt, formElements);
             }
         } catch (error) {
             console.error('调用AI模型时出错:', error);
@@ -670,7 +1314,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 调用Ollama API
     async function callOllamaAPI(config, userPrompt, formElements) {
-        const url = `${config.url}/api/generate`;
+        const url = `${config.url}/api/chat`;
         
         // 获取当前日期和时间
         const now = new Date();
@@ -701,39 +1345,177 @@ ${JSON.stringify(formElements, null, 2)}
 你的回答必须是一个JSON格式，包含formActions数组，每个元素包含elementId和action（填写内容或选择选项）。
 例如：{"formActions":[{"elementId":"email","action":"user@example.com"},{"elementId":"age","action":"30"}]}`;
 
-        const prompt = `${systemPrompt}\n\n用户要求: ${userPrompt}`;
+        console.log('发送给Ollama的提示词:', systemPrompt);
+        console.log('用户要求:', userPrompt);
+        console.log('请求URL:', url);
+        console.log('使用模型:', config.model);
         
-        console.log('发送给Ollama的提示词:', prompt);
+        try {
+            // 通过后台脚本发送请求
+            const response = await new Promise((resolve, reject) => {
+                chrome.runtime.sendMessage({
+                    action: 'ollamaRequest',
+                    url: url,
+                    data: {
+                        model: config.model,  // 使用配置中的模型名称
+                        messages: [
+                            {
+                                role: "system",
+                                content: systemPrompt
+                            },
+                            {
+                                role: "user",
+                                content: userPrompt
+                            }
+                        ],
+                        stream: false,
+                        options: {
+                            temperature: 0.3
+                        }
+                    }
+                }, response => {
+                    if (chrome.runtime.lastError) {
+                        reject(new Error(chrome.runtime.lastError.message));
+                        return;
+                    }
+                    
+                    if (!response.success) {
+                        reject(new Error(response.error || '请求失败'));
+                        return;
+                    }
+                    
+                    resolve(response.data);
+                });
+            });
+            
+            console.log('Ollama API 原始响应:', response);
+            
+            // 解析响应中的JSON
+            try {
+                if (!response.message || !response.message.content) {
+                    throw new Error('Ollama响应格式错误');
+                }
+                
+                const content = response.message.content;
+                console.log('Ollama响应内容:', content);
+                
+                // 尝试提取JSON
+                const jsonMatch = content.match(/\{.*\}/s);
+                if (jsonMatch) {
+                    return JSON.parse(jsonMatch[0]);
+                } else {
+                    throw new Error('无法从响应中解析JSON');
+                }
+            } catch (error) {
+                console.error('解析Ollama响应时出错:', error);
+                throw new Error('无法解析AI响应: ' + error.message);
+            }
+        } catch (error) {
+            console.error('调用Ollama API时出错:', error);
+            if (error.message.includes('Failed to fetch')) {
+                throw new Error(`无法连接到Ollama服务(${url})，请确保：
+1. Ollama 服务已启动
+2. 服务地址正确（请使用 http://127.0.0.1:11434）
+3. 使用以下命令启动 Ollama 以允许浏览器访问：
+   OLLAMA_ORIGINS="*" ollama serve
+4. 没有网络连接问题`);
+            }
+            throw error;
+        }
+    }
+
+    // 调用OpenAI API
+    async function callOpenAIAPI(config, userPrompt, formElements) {
+        const url = 'https://api.openai.com/v1/chat/completions';
+        
+        // 获取当前日期和时间
+        const now = new Date();
+        const dateTimeStr = now.toLocaleString('zh-CN', { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+        
+        // 构建提示词
+        const systemPrompt = `你是一个智能表单填充助手。根据用户的要求，帮助用户填写表单。
+当前日期和时间是: ${dateTimeStr}
+
+以下是页面上的表单元素列表：
+${JSON.stringify(formElements, null, 2)}
+
+请根据用户的要求，确定应该填写哪些表单元素以及填写什么内容。
+特别注意：
+1. 对于contenteditable元素（可编辑的div），需要填写文本内容
+2. 对于复杂表单元素（type为complex的元素），可能需要填写其内部的输入元素
+3. 如果是评论框、留言框等，请根据用户要求生成合适的内容
+4. 如果需要填写日期，除非用户明确指定，否则请使用当前日期: ${dateTimeStr}
+
+你的回答必须是一个JSON格式，包含formActions数组，每个元素包含elementId和action（填写内容或选择选项）。
+例如：{"formActions":[{"elementId":"email","action":"user@example.com"},{"elementId":"age","action":"30"}]}`;
+
+        console.log('发送给OpenAI的提示词:', systemPrompt);
+        console.log('用户要求:', userPrompt);
         
         const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${config.apiKey}`
             },
             body: JSON.stringify({
                 model: config.model,
-                prompt: prompt,
-                stream: false
+                messages: [
+                    {
+                        role: 'system',
+                        content: systemPrompt
+                    },
+                    {
+                        role: 'user',
+                        content: userPrompt
+                    }
+                ],
+                temperature: 0.3
             })
         });
         
         if (!response.ok) {
-            throw new Error(`Ollama API 请求失败: ${response.status}`);
+            const errorData = await response.json().catch(() => ({}));
+            console.error('OpenAI API错误:', errorData);
+            throw new Error(`OpenAI API 请求失败: ${response.status} - ${errorData.error?.message || '未知错误'}`);
         }
         
         const data = await response.json();
-        console.log('Ollama API 原始响应:', data);
+        console.log('OpenAI API 原始响应:', data);
         
         // 解析响应中的JSON
         try {
-            const jsonMatch = data.response.match(/\{.*\}/s);
+            // 检查响应格式
+            if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+                console.error('意外的API响应格式:', data);
+                throw new Error('API返回了意外的响应格式');
+            }
+            
+            const content = data.choices[0].message.content;
+            console.log('OpenAI响应内容:', content);
+            
+            // 尝试提取JSON
+            const jsonMatch = content.match(/\{.*\}/s);
             if (jsonMatch) {
                 return JSON.parse(jsonMatch[0]);
             } else {
-                throw new Error('无法从响应中解析JSON');
+                // 如果没有找到JSON格式，尝试解析整个内容
+                try {
+                    return JSON.parse(content);
+                } catch {
+                    throw new Error('无法从响应中解析JSON');
+                }
             }
         } catch (error) {
-            console.error('解析Ollama响应时出错:', error);
+            console.error('解析OpenAI响应时出错:', error);
             throw new Error('无法解析AI响应: ' + error.message);
         }
     }
@@ -854,106 +1636,750 @@ ${JSON.stringify(formElements, null, 2)}
         }
     }
 
+    // 调用智谱API
+    async function callZhipuAPI(config, userPrompt, formElements) {
+        const url = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+        
+        // 获取当前日期和时间
+        const now = new Date();
+        const dateTimeStr = now.toLocaleString('zh-CN', { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+        
+        // 构建提示词
+        const systemPrompt = `你是一个智能表单填充助手。根据用户的要求，帮助用户填写表单。
+当前日期和时间是: ${dateTimeStr}
+
+以下是页面上的表单元素列表：
+${JSON.stringify(formElements, null, 2)}
+
+请根据用户的要求，确定应该填写哪些表单元素以及填写什么内容。
+特别注意：
+1. 对于contenteditable元素（可编辑的div），需要填写文本内容
+2. 对于复杂表单元素（type为complex的元素），可能需要填写其内部的输入元素
+3. 如果是评论框、留言框等，请根据用户要求生成合适的内容
+4. 如果需要填写日期，除非用户明确指定，否则请使用当前日期: ${dateTimeStr}
+
+你的回答必须是一个JSON格式，包含formActions数组，每个元素包含elementId和action（填写内容或选择选项）。
+例如：{"formActions":[{"elementId":"email","action":"user@example.com"},{"elementId":"age","action":"30"}]}`;
+
+        console.log('发送给智谱的提示词:', systemPrompt);
+        console.log('用户要求:', userPrompt);
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${config.apiKey}`,
+            },
+            body: JSON.stringify({
+                model: config.model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: systemPrompt
+                    },
+                    {
+                        role: 'user',
+                        content: userPrompt
+                    }
+                ],
+                stream: false,
+                temperature: 0.3
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('智谱API错误:', errorData);
+            throw new Error(`智谱 API 请求失败: ${response.status} - ${errorData.message || '未知错误'}`);
+        }
+        
+        const data = await response.json();
+        console.log('智谱 API 原始响应:', data);
+        
+        // 解析响应中的JSON
+        try {
+            // 检查响应格式
+            if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+                console.error('意外的API响应格式:', data);
+                throw new Error('API返回了意外的响应格式');
+            }
+            
+            const content = data.choices[0].message.content;
+            console.log('智谱响应内容:', content);
+            
+            // 尝试提取JSON
+            const jsonMatch = content.match(/\{.*\}/s);
+            if (jsonMatch) {
+                return JSON.parse(jsonMatch[0]);
+            } else {
+                // 如果没有找到JSON格式，尝试解析整个内容
+                try {
+                    return JSON.parse(content);
+                } catch {
+                    throw new Error('无法从响应中解析JSON');
+                }
+            }
+        } catch (error) {
+            console.error('解析智谱响应时出错:', error);
+            throw new Error('无法解析AI响应: ' + error.message);
+        }
+    }
+
+    // 调用Minimax API
+    async function callMinimaxAPI(config, userPrompt, formElements) {
+        const url = 'https://api.minimax.chat/v1/chat/completions';
+        
+        // 获取当前日期和时间
+        const now = new Date();
+        const dateTimeStr = now.toLocaleString('zh-CN', { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+        
+        // 构建提示词
+        const systemPrompt = `你是一个智能表单填充助手。根据用户的要求，帮助用户填写表单。
+当前日期和时间是: ${dateTimeStr}
+
+以下是页面上的表单元素列表：
+${JSON.stringify(formElements, null, 2)}
+
+请根据用户的要求，确定应该填写哪些表单元素以及填写什么内容。
+特别注意：
+1. 对于contenteditable元素（可编辑的div），需要填写文本内容
+2. 对于复杂表单元素（type为complex的元素），可能需要填写其内部的输入元素
+3. 如果是评论框、留言框等，请根据用户要求生成合适的内容
+4. 如果需要填写日期，除非用户明确指定，否则请使用当前日期: ${dateTimeStr}
+
+你的回答必须是一个JSON格式，包含formActions数组，每个元素包含elementId和action（填写内容或选择选项）。
+例如：{"formActions":[{"elementId":"email","action":"user@example.com"},{"elementId":"age","action":"30"}]}`;
+
+        console.log('发送给Minimax的提示词:', systemPrompt);
+        console.log('用户要求:', userPrompt);
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${config.apiKey}`,
+            },
+            body: JSON.stringify({
+                model: config.model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: systemPrompt
+                    },
+                    {
+                        role: 'user',
+                        content: userPrompt
+                    }
+                ]
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Minimax API错误:', errorData);
+            throw new Error(`Minimax API 请求失败: ${response.status} - ${errorData.message || '未知错误'}`);
+        }
+        
+        const data = await response.json();
+        console.log('Minimax API 原始响应:', data);
+        
+        // 解析响应中的JSON
+        try {
+            // 检查响应格式
+            if (!data.reply || !data.reply.text) {
+                console.error('意外的API响应格式:', data);
+                throw new Error('API返回了意外的响应格式');
+            }
+            
+            const content = data.reply.text;
+            console.log('Minimax响应内容:', content);
+            
+            // 尝试提取JSON
+            const jsonMatch = content.match(/\{.*\}/s);
+            if (jsonMatch) {
+                try {
+                    return JSON.parse(jsonMatch[0]);
+                } catch (error) {
+                    console.error('JSON解析错误:', error);
+                    console.error('尝试解析的内容:', jsonMatch[0]);
+                    throw new Error(`解析JSON失败: ${error.message}\n原始内容: ${content.substring(0, 100)}...`);
+                }
+            } else {
+                throw new Error('无法从响应中提取JSON格式的内容');
+            }
+        } catch (error) {
+            console.error('调用Minimax API时出错:', error);
+            throw new Error(`调用Minimax API失败: ${error.message}`);
+        }
+    }
+
+    // 调用DeepSeek API
+    async function callDeepSeekAPI(config, userPrompt, formElements) {
+        const url = 'https://api.deepseek.com/v1/chat/completions';
+        
+        // 获取当前日期和时间
+        const now = new Date();
+        const dateTimeStr = now.toLocaleString('zh-CN', { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+        
+        // 构建提示词
+        const systemPrompt = `你是一个智能表单填充助手。根据用户的要求，帮助用户填写表单。
+当前日期和时间是: ${dateTimeStr}
+
+以下是页面上的表单元素列表：
+${JSON.stringify(formElements, null, 2)}
+
+请根据用户的要求，确定应该填写哪些表单元素以及填写什么内容。
+特别注意：
+1. 对于contenteditable元素（可编辑的div），需要填写文本内容
+2. 对于复杂表单元素（type为complex的元素），可能需要填写其内部的输入元素
+3. 如果是评论框、留言框等，请根据用户要求生成合适的内容
+4. 如果需要填写日期，除非用户明确指定，否则请使用当前日期: ${dateTimeStr}
+
+你的回答必须是一个JSON格式，包含formActions数组，每个元素包含elementId和action（填写内容或选择选项）。
+例如：{"formActions":[{"elementId":"email","action":"user@example.com"},{"elementId":"age","action":"30"}]}`;
+
+        console.log('发送给DeepSeek的提示词:', systemPrompt);
+        console.log('用户要求:', userPrompt);
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${config.apiKey}`,
+            },
+            body: JSON.stringify({
+                model: config.model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: systemPrompt
+                    },
+                    {
+                        role: 'user',
+                        content: userPrompt
+                    }
+                ]
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('DeepSeek API错误:', errorData);
+            throw new Error(`DeepSeek API 请求失败: ${response.status} - ${errorData.message || '未知错误'}`);
+        }
+        
+        const data = await response.json();
+        console.log('DeepSeek API 原始响应:', data);
+        
+        // 解析响应中的JSON
+        try {
+            // 检查响应格式
+            if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+                console.error('意外的API响应格式:', data);
+                throw new Error('API返回了意外的响应格式');
+            }
+            
+            const content = data.choices[0].message.content;
+            console.log('DeepSeek响应内容:', content);
+            
+            // 尝试提取JSON
+            const jsonMatch = content.match(/\{.*\}/s);
+            if (jsonMatch) {
+                return JSON.parse(jsonMatch[0]);
+            } else {
+                // 如果没有找到JSON格式，尝试解析整个内容
+                try {
+                    return JSON.parse(content);
+                } catch {
+                    throw new Error('无法从响应中解析JSON');
+                }
+            }
+        } catch (error) {
+            console.error('解析DeepSeek响应时出错:', error);
+            throw new Error('无法解析AI响应: ' + error.message);
+        }
+    }
+
+    // 调用SiliconFlow API
+    async function callSiliconFlowAPI(config, userPrompt, formElements) {
+        const url = 'https://api.siliconflow.com/v1/chat/completions';
+        
+        // 获取当前日期和时间
+        const now = new Date();
+        const dateTimeStr = now.toLocaleString('zh-CN', { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+        
+        // 构建提示词
+        const systemPrompt = `你是一个智能表单填充助手。根据用户的要求，帮助用户填写表单。
+当前日期和时间是: ${dateTimeStr}
+
+以下是页面上的表单元素列表：
+${JSON.stringify(formElements, null, 2)}
+
+请根据用户的要求，确定应该填写哪些表单元素以及填写什么内容。
+特别注意：
+1. 对于contenteditable元素（可编辑的div），需要填写文本内容
+2. 对于复杂表单元素（type为complex的元素），可能需要填写其内部的输入元素
+3. 如果是评论框、留言框等，请根据用户要求生成合适的内容
+4. 如果需要填写日期，除非用户明确指定，否则请使用当前日期: ${dateTimeStr}
+
+你的回答必须是一个JSON格式，包含formActions数组，每个元素包含elementId和action（填写内容或选择选项）。
+例如：{"formActions":[{"elementId":"email","action":"user@example.com"},{"elementId":"age","action":"30"}]}`;
+
+        console.log('发送给SiliconFlow的提示词:', systemPrompt);
+        console.log('用户要求:', userPrompt);
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${config.apiKey}`,
+            },
+            body: JSON.stringify({
+                model: config.model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: systemPrompt
+                    },
+                    {
+                        role: 'user',
+                        content: userPrompt
+                    }
+                ]
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('SiliconFlow API错误:', errorData);
+            throw new Error(`SiliconFlow API 请求失败: ${response.status} - ${errorData.message || '未知错误'}`);
+        }
+        
+        const data = await response.json();
+        console.log('SiliconFlow API 原始响应:', data);
+        
+        // 解析响应中的JSON
+        try {
+            // 检查响应格式
+            if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+                console.error('意外的API响应格式:', data);
+                throw new Error('API返回了意外的响应格式');
+            }
+            
+            const content = data.choices[0].message.content;
+            console.log('SiliconFlow响应内容:', content);
+            
+            // 尝试提取JSON
+            const jsonMatch = content.match(/\{.*\}/s);
+            if (jsonMatch) {
+                return JSON.parse(jsonMatch[0]);
+            } else {
+                // 如果没有找到JSON格式，尝试解析整个内容
+                try {
+                    return JSON.parse(content);
+                } catch {
+                    throw new Error('无法从响应中解析JSON');
+                }
+            }
+        } catch (error) {
+            console.error('解析SiliconFlow响应时出错:', error);
+            throw new Error('无法解析AI响应: ' + error.message);
+        }
+    }
+
+    // 调用Volcengine API
+    async function callVolcengineAPI(config, userPrompt, formElements) {
+        const url = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+        
+        // 获取当前日期和时间
+        const now = new Date();
+        const dateTimeStr = now.toLocaleString('zh-CN', { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+        
+        // 构建提示词
+        const systemPrompt = `你是一个智能表单填充助手。根据用户的要求，帮助用户填写表单。
+当前日期和时间是: ${dateTimeStr}
+
+以下是页面上的表单元素列表：
+${JSON.stringify(formElements, null, 2)}
+
+请根据用户的要求，确定应该填写哪些表单元素以及填写什么内容。
+特别注意：
+1. 对于contenteditable元素（可编辑的div），需要填写文本内容
+2. 对于复杂表单元素（type为complex的元素），可能需要填写其内部的输入元素
+3. 如果是评论框、留言框等，请根据用户要求生成合适的内容
+4. 如果需要填写日期，除非用户明确指定，否则请使用当前日期: ${dateTimeStr}
+
+你的回答必须是一个JSON格式，包含formActions数组，每个元素包含elementId和action（填写内容或选择选项）。
+例如：{"formActions":[{"elementId":"email","action":"user@example.com"},{"elementId":"age","action":"30"}]}`;
+
+        console.log('发送给Volcengine的提示词:', systemPrompt);
+        console.log('用户要求:', userPrompt);
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${config.apiKey}`,
+            },
+            body: JSON.stringify({
+                model: config.model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: systemPrompt
+                    },
+                    {
+                        role: 'user',
+                        content: userPrompt
+                    }
+                ],
+                stream: false,
+                temperature: 0.3,
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Volcengine API错误:', errorData);
+            throw new Error(`Volcengine API 请求失败: ${response.status} - ${errorData.message || '未知错误'}`);
+        }
+        
+        const data = await response.json();
+        console.log('Volcengine API 原始响应:', data);
+        
+        // 解析响应中的JSON
+        try {
+            // 检查响应格式
+            if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+                console.error('意外的API响应格式:', data);
+                throw new Error('API返回了意外的响应格式');
+            }
+            
+            const content = data.choices[0].message.content;
+            console.log('Volcengine响应内容:', content);
+            
+            // 尝试提取JSON
+            const jsonMatch = content.match(/\{.*\}/s);
+            if (jsonMatch) {
+                return JSON.parse(jsonMatch[0]);
+            } else {
+                // 如果没有找到JSON格式，尝试解析整个内容
+                try {
+                    return JSON.parse(content);
+                } catch {
+                    throw new Error('无法从响应中解析JSON');
+                }
+            }
+        } catch (error) {
+            console.error('解析Volcengine响应时出错:', error);
+            throw new Error('无法解析AI响应: ' + error.message);
+        }
+    }
+
     // 动态获取Ollama模型列表
-    async function fetchOllamaModels() {
+    async function fetchOllamaModels(retryCount = 3) {
         const ollamaUrl = ollamaUrlInput.value.trim();
         if (!ollamaUrl) return;
 
-        try {
-            showToastInPage('正在获取Ollama模型列表...', 'info');
-            
-            const response = await fetch(`${ollamaUrl}/api/tags`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors'
-            }).catch(error => {
-                console.error('Fetch错误:', error);
-                throw new Error(`无法连接到Ollama服务: ${error.message}`);
-            });
-            
-            if (!response.ok) {
-                throw new Error(`获取模型列表失败: ${response.status} ${response.statusText}`);
-            }
-            
-            const data = await response.json().catch(error => {
-                console.error('解析JSON错误:', error);
-                throw new Error('无法解析Ollama服务响应');
-            });
-            
-            if (data && data.models && Array.isArray(data.models)) {
-                // 保存当前选中的值
-                const currentValue = ollamaModelSelect.value;
-                
-                // 清空现有选项，只保留"自定义"选项
-                while (ollamaModelSelect.options.length > 0) {
-                    ollamaModelSelect.remove(0);
-                }
-                
-                // 添加获取到的模型
-                data.models.forEach(model => {
-                    const option = document.createElement('option');
-                    option.value = model.name;
-                    option.textContent = model.name;
-                    ollamaModelSelect.appendChild(option);
+        // 显示加载状态
+        showToastInPage('正在获取Ollama模型列表...', 'info');
+        setButtonsState(true); // 禁用按钮
+        
+        let attempt = 0;
+        
+        while (attempt < retryCount) {
+            try {
+                const response = await fetch(`${ollamaUrl}/api/tags`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    mode: 'cors'
+                }).catch(error => {
+                    console.error('Fetch错误:', error);
+                    throw new Error(`无法连接到Ollama服务: ${error.message}`);
                 });
                 
-                // 添加自定义选项
-                const customOption = document.createElement('option');
-                customOption.value = 'custom';
-                customOption.textContent = '自定义';
-                ollamaModelSelect.appendChild(customOption);
-                
-                // 尝试恢复之前选中的值
-                if (currentValue && Array.from(ollamaModelSelect.options).some(opt => opt.value === currentValue)) {
-                    ollamaModelSelect.value = currentValue;
-                } else {
-                    // 如果之前的值不在新列表中，选择第一个选项
-                    ollamaModelSelect.selectedIndex = 0;
-                    customModelContainer.classList.add('hidden');
+                if (!response.ok) {
+                    throw new Error(`获取模型列表失败: ${response.status} ${response.statusText}`);
                 }
                 
-                showToastInPage(`已获取 ${data.models.length} 个Ollama模型`, 'success');
-            } else {
-                console.error('意外的数据格式:', data);
-                throw new Error('获取到的模型列表格式不正确');
-            }
-        } catch (error) {
-            console.error('获取Ollama模型列表出错:', error);
-            showToastInPage(`获取模型列表失败: ${error.message}`, 'error');
-            
-            // 添加一些默认模型作为备选
-            const defaultModels = ['llama3', 'llama2', 'mistral', 'gemma', 'qwen'];
-            
-            // 保存当前选中的值
-            const currentValue = ollamaModelSelect.value;
-            
-            // 清空现有选项
-            while (ollamaModelSelect.options.length > 0) {
-                ollamaModelSelect.remove(0);
-            }
-            
-            // 添加默认模型
-            defaultModels.forEach(model => {
-                const option = document.createElement('option');
-                option.value = model;
-                option.textContent = model;
-                ollamaModelSelect.appendChild(option);
-            });
-            
-            // 添加自定义选项
-            const customOption = document.createElement('option');
-            customOption.value = 'custom';
-            customOption.textContent = '自定义';
-            ollamaModelSelect.appendChild(customOption);
-            
-            // 尝试恢复之前选中的值
-            if (currentValue && Array.from(ollamaModelSelect.options).some(opt => opt.value === currentValue)) {
-                ollamaModelSelect.value = currentValue;
-            } else {
-                ollamaModelSelect.selectedIndex = 0;
+                const data = await response.json().catch(error => {
+                    console.error('解析JSON错误:', error);
+                    throw new Error('解析Ollama响应失败');
+                });
+                
+                if (!data.models || !Array.isArray(data.models)) {
+                    throw new Error('Ollama返回了意外的响应格式');
+                }
+                
+                // 清空当前选项
+                modelSelectionSelect.innerHTML = '';
+                
+                // 添加模型选项
+                if (data.models.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = '未找到模型';
+                    modelSelectionSelect.appendChild(option);
+                    
+                    showToastInPage('未找到Ollama模型，请先安装模型', 'warning');
+                } else {
+                    // 转换模型数据格式并更新 currentModels
+                    currentModels = data.models.map(model => ({
+                        value: model.name,
+                        label: model.name
+                    }));
+                    
+                    data.models.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model.name;
+                        option.textContent = model.name;
+                        modelSelectionSelect.appendChild(option);
+                    });
+                    
+                    // 如果有保存的配置，尝试选择之前选择的模型
+                    chrome.storage.sync.get('modelConfig', function(data) {
+                        if (data.modelConfig && data.modelConfig.type === 'ollama' && data.modelConfig.model) {
+                            // 检查是否存在该模型选项
+                            if (modelSelectionSelect.querySelector(`option[value="${data.modelConfig.model}"]`)) {
+                                modelSelectionSelect.value = data.modelConfig.model;
+                                // 更新输入框的值
+                                modelInput.value = data.modelConfig.model;
+                            }
+                        } else if (modelSelectionSelect.options.length > 0) {
+                            // 默认选择第一个模型
+                            modelInput.value = modelSelectionSelect.options[0].value;
+                        }
+                        
+                        // 渲染下拉列表
+                        renderModelList(currentModels);
+                    });
+                    
+                    showToastInPage(`成功获取到 ${data.models.length} 个Ollama模型`, 'info');
+                }
+                
+                setButtonsState(false); // 启用按钮
+                return;
+                
+            } catch (error) {
+                attempt++;
+                console.error(`获取Ollama模型列表失败 (尝试 ${attempt}/${retryCount}):`, error);
+                
+                // 检查是否是连接错误
+                if (error.message && error.message.includes("Receiving end does not exist")) {
+                    showToastInPage(`连接错误: 无法与页面通信，可能需要刷新页面`, 'error');
+                    
+                    // 添加一个默认选项
+                    modelSelectionSelect.innerHTML = '';
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = '获取模型失败';
+                    modelSelectionSelect.appendChild(option);
+                    
+                    setButtonsState(false); // 启用按钮
+                    return;
+                }
+                
+                if (attempt < retryCount) {
+                    // 指数退避重试
+                    const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+                    showToastInPage(`获取Ollama模型列表失败，${delay/1000}秒后重试...`, 'warning');
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                } else {
+                    // 最后一次尝试失败
+                    modelSelectionSelect.innerHTML = '';
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = '获取模型失败';
+                    modelSelectionSelect.appendChild(option);
+                    
+                    showToastInPage('获取Ollama模型列表失败: ' + error.message, 'error');
+                    setButtonsState(false); // 启用按钮
+                }
             }
         }
     }
+
+    // 初始化
+    loadSavedConfig();
+
+    // 为用户输入框添加快捷键（Ctrl + Enter）
+    userPromptTextarea.addEventListener('keydown', function(e) {
+        // 检查是否按下了Ctrl+Enter
+        if (e.ctrlKey && e.key === 'Enter') {
+            e.preventDefault(); // 阻止默认行为
+            
+            // 如果AI请求正在进行中，则不执行操作
+            if (isAIRequestInProgress) {
+                showToastInPage('请等待当前请求完成', 'warning');
+                return;
+            }
+            
+            fillFormButton.click(); // 触发填充按钮的点击事件
+            showToastInPage('使用快捷键 Ctrl+Enter 触发填充', 'info', 1500);
+        }
+    });
+
+    // 显示模型下拉列表
+    function showModelDropdown() {
+        if (currentModels.length > 0) {
+            modelDropdown.style.display = 'block';
+        }
+    }
+    
+    // 隐藏模型下拉列表
+    function hideModelDropdown() {
+        modelDropdown.style.display = 'none';
+    }
+    
+    // 过滤模型列表
+    function filterModels(query) {
+        if (!query) {
+            renderModelList(currentModels);
+            return;
+        }
+        
+        const filteredModels = currentModels.filter(model => 
+            model.label.toLowerCase().includes(query.toLowerCase()) || 
+            model.value.toLowerCase().includes(query.toLowerCase())
+        );
+        
+        renderModelList(filteredModels);
+    }
+    
+    // 渲染模型列表
+    function renderModelList(models) {
+        modelList.innerHTML = '';
+        
+        if (models.length === 0) {
+            const noResults = document.createElement('li');
+            noResults.textContent = '未找到匹配的模型';
+            modelList.appendChild(noResults);
+            return;
+        }
+        
+        models.forEach(model => {
+            const item = document.createElement('li');
+            item.textContent = model.label;
+            item.dataset.value = model.value;
+            item.addEventListener('click', () => {
+                selectModel(model);
+            });
+            modelList.appendChild(item);
+        });
+    }
+    
+    // 选择模型
+    function selectModel(model) {
+        modelInput.value = model.label;
+        modelSelectionSelect.value = model.value;
+        hideModelDropdown();
+        
+        // 触发 change 事件
+        const event = new Event('change');
+        modelSelectionSelect.dispatchEvent(event);
+    }
+    
+    // 刷新模型列表
+    function refreshModels() {
+        const provider = modelProviderSelect.value;
+        if (provider === 'ollama') {
+            fetchOllamaModels();
+        } else {
+            const apiKey = apiKeyInput.value.trim();
+            if (apiKey) {
+                fetchModels(provider, apiKey);
+            } else {
+                showToastInPage('请先输入API Key', 'warning');
+            }
+        }
+    }
+    
+    // 模型输入框事件
+    modelInput.addEventListener('focus', showModelDropdown);
+    modelInput.addEventListener('input', () => {
+        showModelDropdown();
+        filterModels(modelInput.value);
+    });
+    
+    // 刷新按钮事件
+    refreshModelsButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        refreshModels();
+    });
+    
+    // 点击其他地方隐藏下拉列表
+    document.addEventListener('click', (e) => {
+        if (!modelInput.contains(e.target) && !modelDropdown.contains(e.target) && !refreshModelsButton.contains(e.target)) {
+            hideModelDropdown();
+        }
+    });
+    
+    // 反馈按钮点击事件
+    if (feedbackLink) {
+        feedbackLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (feedbackModal) {
+                feedbackModal.style.display = 'flex';
+            }
+        });
+    }
+    
+    // 关闭模态框按钮点击事件
+    if (closeModalButton) {
+        closeModalButton.addEventListener('click', function() {
+            if (feedbackModal) {
+                feedbackModal.style.display = 'none';
+            }
+        });
+    }
+    
+    // 点击模态框外部关闭模态框
+    window.addEventListener('click', function(event) {
+        if (event.target === feedbackModal) {
+            feedbackModal.style.display = 'none';
+        }
+    });
 }); 

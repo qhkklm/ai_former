@@ -51,11 +51,10 @@ function generateUniqueId(element) {
     const random = Math.floor(Math.random() * 10000);
     const tagName = element.tagName.toLowerCase();
     const name = element.name || '';
-    const className = element.className || '';
     const type = element.type || '';
     
     // 组合特征生成唯一ID
-    const uniqueId = `auto_${tagName}_${type}_${name}_${className}_${timestamp}_${random}`.replace(/[^a-zA-Z0-9]/g, '_');
+    const uniqueId = `auto_${tagName}_${type}_${name}_${timestamp}_${random}`.replace(/[^a-zA-Z0-9]/g, '_');
     
     // 将生成的ID设置到元素上
     element.id = uniqueId;
@@ -79,14 +78,23 @@ function addHighlightStyle() {
                 background-color: rgba(255, 107, 107, 0.2) !important;
             }
             .element-tooltip {
-                position: absolute;
-                background: #333;
+                position: fixed;
+                background: rgba(0, 0, 0, 0.8);
                 color: white;
-                padding: 5px 10px;
+                padding: 8px 12px;
                 border-radius: 4px;
                 font-size: 12px;
                 z-index: 10000;
                 pointer-events: none;
+                max-width: 300px;
+                white-space: pre-wrap;
+                word-break: break-word;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+                opacity: 0;
+                transition: opacity 0.2s ease-in-out;
+            }
+            .element-tooltip.visible {
+                opacity: 1;
             }
         `;
         document.head.appendChild(style);
@@ -224,6 +232,10 @@ function extractFormElements() {
     // 清空之前的识别结果
     localStorage.removeItem('extractedElements');
     
+    // 清理所有已存在的tooltip
+    const tooltips = document.querySelectorAll('.element-tooltip');
+    tooltips.forEach(t => t.remove());
+    
     addHighlightStyle();
     const results = [];
 
@@ -262,6 +274,10 @@ function processDocument(doc, results) {
         
         // 添加鼠标悬停提示
         element.addEventListener('mouseover', (e) => {
+            // 先移除可能存在的其他 tooltip
+            const existingTooltips = document.querySelectorAll('.element-tooltip');
+            existingTooltips.forEach(t => t.remove());
+
             const tooltip = document.createElement('div');
             tooltip.className = 'element-tooltip';
             tooltip.textContent = `ID: ${uniqueId}
@@ -270,11 +286,17 @@ Name: ${element.name || 'N/A'}`;
             tooltip.style.left = `${e.pageX + 10}px`;
             tooltip.style.top = `${e.pageY + 10}px`;
             document.body.appendChild(tooltip);
+            // 使用 requestAnimationFrame 确保 DOM 更新后再添加 visible 类
+            requestAnimationFrame(() => tooltip.classList.add('visible'));
         });
 
         element.addEventListener('mouseout', () => {
             const tooltips = document.querySelectorAll('.element-tooltip');
-            tooltips.forEach(t => t.remove());
+            tooltips.forEach(t => {
+                t.classList.remove('visible');
+                // 等待过渡动画完成后再移除元素
+                setTimeout(() => t.remove(), 200);
+            });
         });
 
         const elementInfo = {
@@ -284,7 +306,6 @@ Name: ${element.name || 'N/A'}`;
             name: element.name || '',
             originalId: element.id === uniqueId ? '' : element.id,
             inIframe: doc !== document,
-            pureHTML: getPureHTML(element),
             isContentEditable: element.getAttribute('contenteditable') === 'true'
         };
 
@@ -296,7 +317,6 @@ Name: ${element.name || 'N/A'}`;
         // 获取其他属性
         if (element.placeholder) elementInfo.placeholder = element.placeholder;
         if (element.value) elementInfo.value = element.value;
-        if (element.className) elementInfo.className = element.className;
         if (element.getAttribute('contenteditable') === 'true') {
             elementInfo.value = element.textContent.trim();
             elementInfo.placeholder = element.getAttribute('placeholder') || '';
@@ -322,8 +342,7 @@ Name: ${element.name || 'N/A'}`;
             xpath: getXPath(list),
             values: getListValues(list),
             originalId: list.id === uniqueId ? '' : list.id,
-            inIframe: doc !== document,
-            pureHTML: getPureHTML(list)
+            inIframe: doc !== document
         });
     });
     
@@ -342,6 +361,10 @@ Name: ${element.name || 'N/A'}`;
         
         // 添加鼠标悬停提示
         element.addEventListener('mouseover', (e) => {
+            // 先移除可能存在的其他 tooltip
+            const existingTooltips = document.querySelectorAll('.element-tooltip');
+            existingTooltips.forEach(t => t.remove());
+
             const tooltip = document.createElement('div');
             tooltip.className = 'element-tooltip';
             tooltip.textContent = `ID: ${uniqueId}
@@ -350,11 +373,17 @@ Role: ${element.getAttribute('role') || 'N/A'}`;
             tooltip.style.left = `${e.pageX + 10}px`;
             tooltip.style.top = `${e.pageY + 10}px`;
             document.body.appendChild(tooltip);
+            // 使用 requestAnimationFrame 确保 DOM 更新后再添加 visible 类
+            requestAnimationFrame(() => tooltip.classList.add('visible'));
         });
 
         element.addEventListener('mouseout', () => {
             const tooltips = document.querySelectorAll('.element-tooltip');
-            tooltips.forEach(t => t.remove());
+            tooltips.forEach(t => {
+                t.classList.remove('visible');
+                // 等待过渡动画完成后再移除元素
+                setTimeout(() => t.remove(), 200);
+            });
         });
         
         // 查找内部的输入元素
@@ -372,11 +401,9 @@ Role: ${element.getAttribute('role') || 'N/A'}`;
             uniqueId: uniqueId,
             type: 'complex',
             xpath: getXPath(element),
-            className: element.className,
             role: element.getAttribute('role') || '',
             innerInputId: innerInputId,
             inIframe: doc !== document,
-            pureHTML: getPureHTML(element),
             isComplex: true
         });
     });
@@ -387,10 +414,14 @@ function removeHighlights() {
     // 移除主文档中的高亮元素
     const highlightedElements = document.querySelectorAll('.element-highlight');
     highlightedElements.forEach(element => {
-        element.classList.remove('element-highlight');
+        // 移除所有事件监听器
+        const clone = element.cloneNode(true);
+        element.parentNode.replaceChild(clone, element);
+        
+        clone.classList.remove('element-highlight');
         // 移除可能添加的样式
-        element.style.backgroundColor = '';
-        element.style.border = '';
+        clone.style.backgroundColor = '';
+        clone.style.border = '';
     });
     
     // 移除所有tooltip
@@ -410,9 +441,13 @@ function removeHighlights() {
             const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
             const iframeHighlightedElements = iframeDoc.querySelectorAll('.element-highlight');
             iframeHighlightedElements.forEach(element => {
-                element.classList.remove('element-highlight');
-                element.style.backgroundColor = '';
-                element.style.border = '';
+                // 移除所有事件监听器
+                const clone = element.cloneNode(true);
+                element.parentNode.replaceChild(clone, element);
+                
+                clone.classList.remove('element-highlight');
+                clone.style.backgroundColor = '';
+                clone.style.border = '';
             });
             
             const iframeTooltips = iframeDoc.querySelectorAll('.element-tooltip');
@@ -860,24 +895,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         } else if (request.action === "extractXPaths") {
             removeHighlights(); // 先清除现有的高亮
             const results = extractFormElements(); // 这会添加新的高亮
-            // 输出纯HTML但不影响高亮
-            setTimeout(() => {
-                try {
-                    getPagePureHTML();
-                } catch (error) {
-                    console.error('获取纯HTML时出错:', error);
-                }
-            }, 100);
             sendResponse({success: true, count: results.length});
-        } else if (request.action === "getPureHTML") {
-            // 单独获取纯HTML而不影响高亮
-            try {
-                const pureHTML = getPagePureHTML();
-                sendResponse({success: true, html: pureHTML});
-            } catch (error) {
-                console.error('获取纯HTML时出错:', error);
-                sendResponse({success: false, error: error.message});
-            }
         } else if (request.action === "removeHighlights") {
             removeHighlights();
             sendResponse({success: true});
@@ -902,4 +920,61 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({success: false, error: error.message});
     }
     return true;
-}); 
+});
+
+function getFormElementInfo(element) {
+    return {
+        id: element.id || '',
+        name: element.name || '',
+        type: element.type || element.tagName.toLowerCase(),
+        value: element.value || '',
+        placeholder: element.placeholder || '',
+        label: getElementLabel(element),
+        xpath: getXPath(element),
+        isRequired: element.required || false,
+        isReadOnly: element.readOnly || false,
+        isDisabled: element.disabled || false,
+        isVisible: isElementVisible(element),
+        attributes: getElementAttributes(element)
+    };
+}
+
+function getComplexElementInfo(element) {
+    return {
+        id: element.id || '',
+        type: 'complex',
+        xpath: getXPath(element),
+        label: getElementLabel(element),
+        isVisible: isElementVisible(element),
+        attributes: getElementAttributes(element),
+        inputs: Array.from(element.querySelectorAll('input, select, textarea')).map(input => getFormElementInfo(input))
+    };
+}
+
+function getListElementInfo(list) {
+    return {
+        id: list.id || '',
+        type: 'list',
+        xpath: getXPath(list),
+        label: getElementLabel(list),
+        isVisible: isElementVisible(list),
+        attributes: getElementAttributes(list),
+        options: Array.from(list.children).map(item => ({
+            text: item.textContent.trim(),
+            value: item.value || item.textContent.trim(),
+            isSelected: item.selected || false
+        }))
+    };
+}
+
+function getContentEditableInfo(element) {
+    return {
+        id: element.id || '',
+        type: 'contenteditable',
+        xpath: getXPath(element),
+        content: element.textContent.trim(),
+        label: getElementLabel(element),
+        isVisible: isElementVisible(element),
+        attributes: getElementAttributes(element)
+    };
+} 

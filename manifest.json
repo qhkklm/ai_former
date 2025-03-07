@@ -31,7 +31,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["qrcode.png"],
+      "resources": ["qrcode.jpg"],
       "matches": ["<all_urls>"]
     }
   ]
