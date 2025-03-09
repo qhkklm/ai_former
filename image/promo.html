@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能表单填充助手 - 宣传图片</title>
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #1a73e8;
+            margin-bottom: 30px;
+        }
+        
+        .promo-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        h2 {
+            color: #1a73e8;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        
+        .promo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .promo-item {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .promo-item h3 {
+            margin: 0;
+            padding: 10px 15px;
+            background-color: #f5f5f5;
+            font-size: 16px;
+            color: #333;
+        }
+        
+        .promo-content {
+            padding: 15px;
+        }
+        
+        .promo-image {
+            width: 100%;
+            height: auto;
+            display: block;
+            background-color: #e9f0fe;
+            border: 1px dashed #1a73e8;
+            border-radius: 4px;
+            padding: 10px;
+            box-sizing: border-box;
+            text-align: center;
+            color: #1a73e8;
+            font-weight: bold;
+        }
+        
+        .promo-desc {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .promo-size {
+            display: inline-block;
+            background-color: #e9f0fe;
+            color: #1a73e8;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        
+        .note {
+            background-color: #fff8e1;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .note h3 {
+            margin-top: 0;
+            color: #f57c00;
+        }
+        
+        .note p {
+            margin-bottom: 0;
+        }
+        
+        .checklist {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        
+        .checklist li {
+            position: relative;
+            padding-left: 30px;
+            margin-bottom: 10px;
+        }
+        
+        .checklist li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #34a853;
+            font-weight: bold;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <h1>智能表单填充助手 - Chrome Web Store 宣传图片</h1>
+    
+    <div class="promo-container">
+        <div class="note">
+            <h3>提示</h3>
+            <p>以下是Chrome Web Store要求的宣传图片尺寸和规格。请根据这些规格准备相应的图片，并在提交扩展时上传。</p>
+        </div>
+        
+        <div class="section">
+            <h2>必需的图片</h2>
+            
+            <div class="promo-grid">
+                <div class="promo-item">
+                    <h3>图标</h3>
+                    <div class="promo-content">
+                        <div class="promo-image" style="height: 128px; line-height: 128px;">
+                            128 x 128 图标
+                        </div>
+                        <p class="promo-desc">主要扩展图标，将显示在Chrome Web Store和浏览器工具栏中。</p>
+                        <span class="promo-size">128 x 128 像素</span>
+                    </div>
+                </div>
+                
+                <div class="promo-item">
+                    <h3>截图</h3>
+                    <div class="promo-content">
+                        <div class="promo-image" style="height: 200px; line-height: 200px;">
+                            1280 x 800 截图
+                        </div>
+                        <p class="promo-desc">展示扩展功能的截图，至少需要提供一张。</p>
+                        <span class="promo-size">1280 x 800 像素</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>可选的宣传图片</h2>
+            
+            <div class="promo-grid">
+                <div class="promo-item">
+                    <h3>小型宣传图</h3>
+                    <div class="promo-content">
+                        <div class="promo-image" style="height: 220px; line-height: 220px;">
+                            440 x 280 宣传图
+                        </div>
+                        <p class="promo-desc">在Chrome Web Store搜索结果中显示的小型宣传图。</p>
+                        <span class="promo-size">440 x 280 像素</span>
+                    </div>
+                </div>
+                
+                <div class="promo-item">
+                    <h3>大型宣传图</h3>
+                    <div class="promo-content">
+                        <div class="promo-image" style="height: 220px; line-height: 220px;">
+                            920 x 680 宣传图
+                        </div>
+                        <p class="promo-desc">在扩展详情页顶部显示的大型宣传图。</p>
+                        <span class="promo-size">920 x 680 像素</span>
+                    </div>
+                </div>
+                
+                <div class="promo-item">
+                    <h3>标题宣传图</h3>
+                    <div class="promo-content">
+                        <div class="promo-image" style="height: 140px; line-height: 140px;">
+                            1400 x 560 宣传图
+                        </div>
+                        <p class="promo-desc">在Chrome Web Store首页特色扩展区域显示的宣传图。</p>
+                        <span class="promo-size">1400 x 560 像素</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>图片设计建议</h2>
+            
+            <ul class="checklist">
+                <li>使用简洁、专业的设计，避免过于复杂的背景</li>
+                <li>确保图片清晰，文字易读</li>
+                <li>使用与扩展功能相关的图像和图标</li>
+                <li>保持品牌一致性，使用相同的配色方案和设计元素</li>
+                <li>突出扩展的主要功能和优势</li>
+                <li>避免使用太多文字，让图片说话</li>
+                <li>确保图片符合Chrome Web Store的政策要求</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html> 

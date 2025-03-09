@@ -244,7 +244,26 @@
             border-radius: 8px;
             max-width: 80%;
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            text-align: center;
+            text-align: left;
+        }
+        .modal-content h3 {
+            margin-top: 0;
+            margin-bottom: 16px;
+            font-size: 16px;
+            color: #333;
+        }
+        .modal-content p {
+            margin: 8px 0;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+        }
+        .modal-content a {
+            color: #1890ff;
+            text-decoration: none;
+        }
+        .modal-content a:hover {
+            text-decoration: underline;
         }
         .modal-close {
             margin-top: 15px;
@@ -361,6 +380,254 @@
         .info-icon:hover + .tooltip {
             display: block;
         }
+        
+        /* Ollama配置卡片样式 */
+        .ollama-guide {
+            background-color: #f5f7ff;
+            border: 1px solid #e0e6ff;
+            padding: 12px;
+            margin-top: 8px;
+            border-radius: 6px;
+        }
+        .ollama-guide h4 {
+            margin: 0 0 8px 0;
+            color: #1a73e8;
+            font-size: 13px;
+        }
+        .ollama-guide p {
+            margin: 4px 0;
+            font-size: 12px;
+            color: #555;
+            line-height: 1.5;
+        }
+        .ollama-guide code {
+            background: #eef1ff;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 11px;
+            display: block;
+            margin: 4px 0;
+            white-space: pre-wrap;
+        }
+        .ollama-guide .note {
+            color: #d23f31;
+            font-size: 11px;
+            margin-top: 8px;
+        }
+        
+        /* 字数统计样式 */
+        .word-count {
+            font-size: 11px;
+            color: #666;
+            text-align: right;
+            margin-top: -6px;
+            margin-bottom: 8px;
+        }
+        
+        .word-count.warning {
+            color: #f57c00;
+        }
+        
+        .word-count.error {
+            color: #d32f2f;
+        }
+        
+        /* 补充资料文本框样式 */
+        .additional-info-textarea {
+            min-height: 40px;
+            max-height: 200px;
+            font-size: 12px;
+            line-height: 1.5;
+            padding: 8px;
+            display: none;
+        }
+        
+        /* 补充资料相关样式 */
+        .additional-info-container {
+            position: relative;
+        }
+        
+        .additional-info-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            padding: 8px;
+            background: #fafafa;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            user-select: none;
+        }
+        
+        .additional-info-header:hover {
+            background: #f0f0f0;
+        }
+        
+        .additional-info-title {
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .additional-info-arrow {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.2s;
+        }
+        
+        .additional-info-container.expanded .additional-info-arrow {
+            transform: rotate(180deg);
+        }
+        
+        .additional-info-container.expanded .additional-info-textarea,
+        .additional-info-container.expanded .additional-info-footer,
+        .additional-info-container.expanded .tags-container {
+            display: block;
+        }
+        
+        .additional-info-footer {
+            display: none;
+            justify-content: flex-end;
+            align-items: center;
+            margin-top: 4px;
+        }
+        
+        .tags-container {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            min-height: 28px;
+            flex-wrap: wrap;
+        }
+        
+        .tags-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+        
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .tag.active {
+            background-color: #e6f4ff;
+            color: #1890ff;
+        }
+        
+        .tag:hover {
+            background-color: #e6e6e6;
+        }
+        
+        .tag.active:hover {
+            background-color: #bae0ff;
+        }
+        
+        .tag .delete-btn {
+            width: 14px;
+            height: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.1);
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: all 0.2s;
+            color: #666;
+        }
+        
+        .tag .delete-btn:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.2);
+            color: #333;
+        }
+        
+        .tag.active .delete-btn {
+            color: #1890ff;
+            background: rgba(24, 144, 255, 0.1);
+        }
+        
+        .tag.active .delete-btn:hover {
+            background: rgba(24, 144, 255, 0.2);
+            color: #096dd9;
+        }
+        
+        .icon-button {
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #666;
+            transition: all 0.2s;
+        }
+        
+        .icon-button:hover {
+            background-color: #f5f5f5;
+            border-color: #999;
+            color: #333;
+        }
+        
+        .button-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .text-button {
+            font-size: 12px;
+            color: #1890ff;
+            text-decoration: none;
+            cursor: pointer;
+            padding: 7px 12px;
+            min-width: 32px;
+            text-align: center;
+            white-space: nowrap;
+        }
+        
+        .text-button:hover {
+            text-decoration: underline;
+        }
+        
+        .small-button {
+            padding: 7px 12px;
+            font-size: 12px;
+            background-color: #1890ff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            min-width: 32px;
+            white-space: nowrap;
+        }
+        
+        .small-button:hover {
+            background-color: #40a9ff;
+        }
+        
+        .small-button:disabled {
+            background-color: #d9d9d9;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -446,19 +713,92 @@ DeepSeek：deepseek-chat
             
             <div id="status" class="status"></div>
         </div>
+        
+        <!-- 补充资料卡片 -->
+        <div class="section">
+            <!-- 补充资料编辑区 -->
+            <div class="additional-info-container">
+                <div class="additional-info-header">
+                    <span class="additional-info-title">补充信息（可选）</span>
+                    <svg class="additional-info-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </div>
+
+                <!-- 标签列表 -->
+                <div class="tags-container">
+                    <div id="tags-list" class="tags-list"></div>
+                </div>
+                
+                <textarea 
+                    id="additional-info" 
+                    class="additional-info-textarea" 
+                    placeholder="请注意：资料只存于本地，删除插件之后就会丢失。在这里输入补充信息，这些信息将被 AI 一起理解。 "
+                ></textarea>
+                <div class="additional-info-footer">
+                    <div id="word-count" class="word-count">0 字</div>
+                    <div class="button-group">
+                        <button id="save-info" class="small-button">保存</button>
+                        <a href="#" id="save-as" class="text-button">另存为</a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        
+        <!-- Ollama 配置指南卡片 -->
+        <div id="ollamaSection" class="section hidden">
+            <div class="section-title">Ollama 配置指南</div>
+            <div class="ollama-guide">
+                <p>由于 Ollama 需要本地运行，所以需要您本地安装 Ollama 服务。</p>
+                <p>并允许浏览器的跨域请求。</p>
+                </br>
+                <p>请参考以下步骤安装和配置 Ollama：</p>
+                <p>1. 安装 Ollama（如果尚未安装）：</p>
+                <code>curl https://ollama.ai/install.sh | sh</code>
+                <p>2. 启动 Ollama 服务（允许浏览器访问）：</p>
+                <code>OLLAMA_ORIGINS="*" ollama serve</code>
+                <p>3. 下载推荐模型（选择以下命令之一）：</p>
+                <code>ollama run qwen2.5:32b
+ollama run qwen2.5-coder:14b</code>
+                <p class="note">注意：首次下载模型可能需要一些时间，请耐心等待。下载完成后，模型会自动出现在上方的选择列表中。</p>
+            </div>
+        </div>
     </div>
     
     <!-- 二维码区域 -->
     <div class="qrcode-container">
-        <a href="#" id="feedback-link" class="feedback-link">反馈异常</a>
+        <a href="#" id="feedback-link" class="feedback-link">点这里提提意见</a>
     </div>
     
     <!-- 反馈模态框 -->
     <div id="feedback-modal" class="modal">
         <div class="modal-content">
-            <h3>问题反馈</h3>
-            <p>请通过扫描二维码联系我们反馈问题，谢谢哦！</p>
-            <img src="qrcode.jpg" alt="扫码反馈" class="qrcode-image">
+            <h3>👋 嗨，我是洛小山</h3>
+            <p style="color: #666; font-size: 14px;">白天是个爱折腾的 AI 产品经理，晚上是个快乐的小开发~ </p>
+            
+            <p style="color: #1890ff; margin-top: 15px;">🎯 关于这个工具</p>
+            <p>这是我根据公众号读者的需求开发的智能表单填充工具，希望能帮你省下宝贵的时间！</p>
+            
+            <p style="color: #1890ff; margin-top: 15px;">🚀 更多好玩的</p>
+            <p>我还在捣鼓更多有趣的 AI 小工具，会在公众号【洛小山】和大家分享：</p>
+            <ul style="color: #666; margin: 8px 0; padding-left: 20px;">
+                <li>各种实用的 AI 工具</li>
+                <li>有趣的技术教程</li>
+                <li>AI 技术到产品的实践</li>
+                <li>AI 产品拆解</li>
+            </ul>
+            
+            <p style="color: #1890ff; margin-top: 15px;">💡 期待你的想法</p>
+            <p>在日常工作或生活中，<span style="color: #ff4d4f; font-weight: 500;">有没有觉得“要是有个 AI 工具能帮我做这个就好了”？</span>欢迎扫码和我聊聊，说不定你的小需求就能变成下一个实用工具！</p>
+            
+            <p style="color: #1890ff; margin-top: 15px;">🐛 遇到问题？</p>
+            <p>开发不易，难免有 bug ~ 如果你发现了什么问题，欢迎来和我说说，我会及时修复的！你的反馈就是对我最好的支持 😊</p>
+            
+            <p style=" margin-top: 15px; color: #666;">
+                🏠 洛小山：<a href="http://luoxiaoshan.cn" target="_blank" style="color: #1890ff;">luoxiaoshan.cn</a>
+            </p>
+            <img src="qrcode.jpg" alt="扫码关注" class="qrcode-image" style="margin: 15px auto;">
             <button id="close-modal" class="modal-close">关闭</button>
         </div>
     </div>

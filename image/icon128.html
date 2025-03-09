@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能表单填充助手 - 图标预览</title>
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #1a73e8;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        
+        .icon-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+        }
+        
+        .icon-preview {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .icon {
+            width: 128px;
+            height: 128px;
+            border-radius: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            background-color: #4285f4;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .icon-label {
+            font-size: 14px;
+            color: #555;
+        }
+        
+        .icon-size {
+            font-size: 12px;
+            color: #888;
+        }
+        
+        /* 图标内部元素 */
+        .form {
+            position: absolute;
+            width: 80px;
+            height: 96px;
+            background-color: white;
+            border-radius: 8px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .form-line {
+            position: absolute;
+            height: 3px;
+            background-color: #E1F5FE;
+            border-radius: 1.5px;
+            left: 14px;
+        }
+        
+        .form-line:nth-child(1) {
+            width: 56px;
+            top: 24px;
+        }
+        
+        .form-line:nth-child(2) {
+            width: 56px;
+            top: 40px;
+        }
+        
+        .form-line:nth-child(3) {
+            width: 56px;
+            top: 56px;
+        }
+        
+        .form-line:nth-child(4) {
+            width: 56px;
+            top: 72px;
+        }
+        
+        .form-label {
+            position: absolute;
+            height: 2px;
+            width: 24px;
+            background-color: #BBDEFB;
+            border-radius: 1px;
+            left: 14px;
+        }
+        
+        .form-label:nth-child(5) {
+            top: 18px;
+        }
+        
+        .form-label:nth-child(6) {
+            top: 34px;
+        }
+        
+        .form-label:nth-child(7) {
+            top: 50px;
+        }
+        
+        .form-label:nth-child(8) {
+            top: 66px;
+        }
+        
+        .check-circle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: #34A853;
+            border-radius: 50%;
+            right: 12px;
+        }
+        
+        .check-circle:nth-child(9) {
+            top: 20px;
+        }
+        
+        .check-circle:nth-child(10) {
+            top: 36px;
+        }
+        
+        .check-circle:nth-child(11) {
+            top: 52px;
+        }
+        
+        .check-circle:nth-child(12) {
+            top: 68px;
+        }
+        
+        .check {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            top: 3px;
+            left: 3px;
+        }
+        
+        .check:after {
+            content: '';
+            position: absolute;
+            width: 6px;
+            height: 2px;
+            background-color: white;
+            transform: rotate(45deg);
+            top: 2px;
+            left: 0;
+        }
+        
+        .check:before {
+            content: '';
+            position: absolute;
+            width: 3px;
+            height: 2px;
+            background-color: white;
+            transform: rotate(-45deg);
+            top: 3px;
+            left: 0;
+        }
+        
+        .magic {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background-color: #FFEB3B;
+            border-radius: 50%;
+            top: 24px;
+            right: 24px;
+        }
+        
+        .magic:before, .magic:after {
+            content: '';
+            position: absolute;
+            background-color: #FFEB3B;
+        }
+        
+        .magic:before {
+            width: 2px;
+            height: 8px;
+            top: -6px;
+            left: 7px;
+        }
+        
+        .magic:after {
+            width: 8px;
+            height: 2px;
+            top: 7px;
+            left: -6px;
+        }
+        
+        .download-btn {
+            margin-top: 30px;
+            padding: 10px 20px;
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .download-btn:hover {
+            background-color: #0d62d1;
+        }
+        
+        .note {
+            margin-top: 30px;
+            font-size: 13px;
+            color: #666;
+            text-align: center;
+            max-width: 400px;
+        }
+    </style>
+</head>
+<body>
+    <h1>智能表单填充助手 - 图标预览</h1>
+    
+    <div class="icon-container">
+        <div class="icon-preview">
+            <div class="icon">
+                <!-- 表单元素 -->
+                <div class="form">
+                    <!-- 表单线条 -->
+                    <div class="form-line"></div>
+                    <div class="form-line"></div>
+                    <div class="form-line"></div>
+                    <div class="form-line"></div>
+                    
+                    <!-- 表单标签 -->
+                    <div class="form-label"></div>
+                    <div class="form-label"></div>
+                    <div class="form-label"></div>
+                    <div class="form-label"></div>
+                    
+                    <!-- 对勾圆圈 -->
+                    <div class="check-circle">
+                        <div class="check"></div>
+                    </div>
+                    <div class="check-circle">
+                        <div class="check"></div>
+                    </div>
+                    <div class="check-circle">
+                        <div class="check"></div>
+                    </div>
+                    <div class="check-circle">
+                        <div class="check"></div>
+                    </div>
+                </div>
+                
+                <!-- 魔法元素 -->
+                <div class="magic"></div>
+            </div>
+            <div class="icon-label">智能表单填充助手图标</div>
+            <div class="icon-size">128 x 128 像素</div>
+        </div>
+    </div>
+    
+    <p class="note">注意：这是一个HTML预览版本的图标。实际提交到Chrome Web Store时，您需要准备PNG格式的图标文件。您可以使用截图工具截取此图标，或使用设计工具创建更精美的图标。</p>
+    
+    <script>
+        // 这里可以添加下载图标的功能，但需要使用Canvas API来实现
+        // 由于这超出了当前示例的范围，所以这里只是一个占位符
+    </script>
+</body>
+</html> 

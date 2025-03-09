@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能表单填充助手 - Chrome Web Store 发布清单</title>
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #1a73e8;
+            margin-bottom: 30px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+        }
+        
+        .section:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        
+        h2 {
+            color: #1a73e8;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        
+        .field {
+            margin-bottom: 20px;
+        }
+        
+        .field-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+            display: block;
+        }
+        
+        .field-value {
+            padding: 12px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            border-left: 3px solid #1a73e8;
+        }
+        
+        .field-desc {
+            font-size: 13px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .note {
+            background-color: #e8f4fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #1a73e8;
+        }
+        
+        .note h3 {
+            margin-top: 0;
+            color: #1a73e8;
+            font-size: 16px;
+        }
+        
+        .note p {
+            margin-bottom: 0;
+        }
+        
+        .checklist {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        
+        .checklist li {
+            position: relative;
+            padding-left: 30px;
+            margin-bottom: 10px;
+        }
+        
+        .checklist li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #34a853;
+            font-weight: bold;
+        }
+        
+        .language-tag {
+            display: inline-block;
+            background-color: #e9f0fe;
+            color: #1a73e8;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>智能表单填充助手 - Chrome Web Store 发布清单</h1>
+        
+        <div class="note">
+            <h3>提示</h3>
+            <p>以下是提交到Chrome Web Store时需要填写的信息。请根据这些字段准备相应的内容，并在提交扩展时填写。</p>
+        </div>
+        
+        <div class="section">
+            <h2>基本信息</h2>
+            
+            <div class="field">
+                <span class="field-label">扩展名称</span>
+                <div class="field-value">智能表单填充助手</div>
+                <div class="field-desc">扩展的名称，将显示在Chrome Web Store和浏览器中。</div>
+            </div>
+            
+            <div class="field">
+                <span class="field-label">简短描述</span>
+                <div class="field-value">基于AI的智能表单填充工具，自动识别表单字段并根据您的需求智能填充内容，支持多种AI模型。</div>
+                <div class="field-desc">简短描述您的扩展功能，最多132个字符。</div>
+            </div>
+            
+            <div class="field">
+                <span class="field-label">详细描述</span>
+                <div class="field-value">
+                    <p>智能表单填充助手是一款基于人工智能的Chrome扩展，能够自动识别网页中的表单字段，并根据您的需求智能填充内容。无论是填写个人信息、申请表格还是注册账号，都能帮您节省大量时间和精力。</p>
+                    
+                    <p><strong>主要功能：</strong></p>
+                    <ul>
+                        <li>智能识别表单：自动识别网页中的表单字段，无需手动指定</li>
+                        <li>自然语言输入：用自然语言描述您的需求，AI自动理解并填充</li>
+                        <li>隐私保护：支持本地模型，数据不出本机，保护您的隐私</li>
+                        <li>多模型支持：支持OpenAI、通义千问、智谱AI、DeepSeek、硅基流动、火山引擎等多种AI模型</li>
+                        <li>高效便捷：一键填充表单，节省大量时间和精力</li>
+                        <li>智能提醒：智能识别必填字段，确保表单完整填写</li>
+                    </ul>
+                    
+                    <p><strong>使用方法：</strong></p>
+                    <ol>
+                        <li>安装扩展后，点击工具栏中的扩展图标</li>
+                        <li>选择您喜欢的AI模型提供商，并配置相应的API密钥</li>
+                        <li>导航到包含表单的网页</li>
+                        <li>在文本框中输入您的需求，例如"我是30岁的软件工程师，请帮我填写个人信息"</li>
+                        <li>点击"智能识别并填充表单"按钮，AI将自动识别表单字段并填充相应内容</li>
+                    </ol>
+                    
+                    <p><strong>特色功能：</strong></p>
+                    <ul>
+                        <li>本地模型支持：通过Ollama集成，支持在本地运行AI模型，保护您的隐私</li>
+                        <li>补充信息管理：可以添加和管理补充信息，帮助AI更准确地理解您的需求</li>
+                        <li>快捷键支持：使用Ctrl+Enter快速识别并填充表单，提高操作效率</li>
+                        <li>表单高亮显示：识别的表单字段会高亮显示，让您清楚地知道哪些字段将被填充</li>
+                        <li>智能标签系统：通过标签系统组织和管理您的补充信息，方便快速调用</li>
+                    </ul>
+                    
+                    <p><strong>隐私保护：</strong></p>
+                    <ul>
+                        <li>支持本地模型运行，数据不出本机</li>
+                        <li>不收集用户的表单数据</li>
+                        <li>不存储用户的API密钥到云端</li>
+                        <li>所有数据仅存储在本地浏览器中</li>
+                        <li>不包含任何跟踪或分析代码</li>
+                    </ul>
+                    
+                    <p>有问题或建议？请扫描扩展中的二维码关注公众号【洛小山】反馈。</p>
+                </div>
+                <div class="field-desc">详细描述您的扩展功能、使用方法和特点，最多16,000个字符。</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>分类和标签</h2>
+            
+            <div class="field">
+                <span class="field-label">分类</span>
+                <div class="field-value">生产工具</div>
+                <div class="field-desc">选择最能描述您扩展功能的分类。</div>
+            </div>
+            
+            <div class="field">
+                <span class="field-label">语言</span>
+                <div class="field-value">
+                    <span class="language-tag">中文 (简体)</span>
+                    <span class="language-tag">英语</span>
+                </div>
+                <div class="field-desc">您的扩展支持的语言。</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>隐私和安全</h2>
+            
+            <div class="field">
+                <span class="field-label">隐私政策</span>
+                <div class="field-value">https://example.com/privacy-policy</div>
+                <div class="field-desc">提供一个有效的隐私政策URL，说明您如何收集、使用和保护用户数据。</div>
+            </div>
+            
+            <div class="field">
+                <span class="field-label">权限说明</span>
+                <div class="field-value">
+                    <p><strong>activeTab权限</strong>：用于识别和填充当前活动标签页中的表单字段。</p>
+                    <p><strong>storage权限</strong>：用于存储用户的API密钥和偏好设置。</p>
+                    <p><strong>sidePanel权限</strong>：用于在侧边栏中显示扩展界面。</p>
+                </div>
+                <div class="field-desc">解释您的扩展为什么需要请求的权限。</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>发布前检查清单</h2>
+            
+            <ul class="checklist">
+                <li>确保所有必需的图片（图标、截图）已准备好</li>
+                <li>详细描述已完成并包含所有重要信息</li>
+                <li>隐私政策URL有效且内容符合要求</li>
+                <li>已测试扩展在不同网站上的表现</li>
+                <li>确保扩展符合Chrome Web Store的政策要求</li>
+                <li>已支付$5的一次性开发者注册费用</li>
+                <li>已准备好$5的发布费用</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html> 

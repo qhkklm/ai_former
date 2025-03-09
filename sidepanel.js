@@ -26,6 +26,230 @@ document.addEventListener('DOMContentLoaded', function() {
     const feedbackModal = document.getElementById('feedback-modal');
     const closeModalButton = document.getElementById('close-modal');
     
+    // 补充资料相关元素
+    const additionalInfoContainer = document.querySelector('.additional-info-container');
+    const additionalInfoHeader = document.querySelector('.additional-info-header');
+    const additionalInfoTextarea = document.getElementById('additional-info');
+    const wordCountDiv = document.getElementById('word-count');
+    const tagsList = document.getElementById('tags-list');
+    const saveInfoButton = document.getElementById('save-info');
+    const saveAsButton = document.getElementById('save-as');
+    
+    // 补充资料管理相关变量
+    let currentTagId = null;
+    let additionalInfos = {};
+    
+    // 初始化补充资料展开状态
+    function initializeAdditionalInfoState() {
+        chrome.storage.local.get(['additionalInfoExpanded'], function(data) {
+            if (data.additionalInfoExpanded) {
+                additionalInfoContainer.classList.add('expanded');
+            }
+        });
+    }
+    
+    // 切换补充资料展开状态
+    additionalInfoHeader.addEventListener('click', function() {
+        const isExpanded = additionalInfoContainer.classList.toggle('expanded');
+        chrome.storage.local.set({ additionalInfoExpanded: isExpanded });
+    });
+    
+    // 初始化补充资料
+    function initializeAdditionalInfo() {
+        chrome.storage.local.get(['additionalInfos', 'currentTagId', 'additionalInfoExpanded'], function(data) {
+            additionalInfos = data.additionalInfos || {};
+            currentTagId = data.currentTagId;
+            
+            // 设置展开状态
+            if (data.additionalInfoExpanded) {
+                additionalInfoContainer.classList.add('expanded');
+            }
+            
+            // 渲染标签
+            renderTags();
+            
+            // 如果有当前标签，加载其内容
+            if (currentTagId && additionalInfos[currentTagId]) {
+                additionalInfoTextarea.value = additionalInfos[currentTagId].content;
+            } else {
+                // 如果没有当前标签或当前标签不存在，清空内容并选中"空"标签
+                currentTagId = null;
+                additionalInfoTextarea.value = '';
+            }
+            updateWordCount();
+        });
+    }
+    
+    // 渲染标签列表
+    function renderTags() {
+        tagsList.innerHTML = '';
+        
+        // 添加置顶的"空"标签
+        const emptyTag = document.createElement('div');
+        emptyTag.className = `tag ${currentTagId === null ? 'active' : ''}`;
+        emptyTag.innerHTML = '空';
+        emptyTag.addEventListener('click', () => {
+            // 如果当前有未保存的内容，提示保存
+            if (currentTagId && additionalInfos[currentTagId] && 
+                additionalInfos[currentTagId].content !== additionalInfoTextarea.value) {
+                if (confirm('当前内容未保存，是否保存？')) {
+                    saveCurrentContent();
+                }
+            }
+            
+            // 切换到空标签
+            currentTagId = null;
+            additionalInfoTextarea.value = '';
+            updateWordCount();
+            
+            // 更新UI
+            document.querySelectorAll('.tag').forEach(tag => {
+                tag.classList.remove('active');
+            });
+            emptyTag.classList.add('active');
+            
+            // 保存当前标签ID
+            chrome.storage.local.set({ currentTagId: null });
+        });
+        tagsList.appendChild(emptyTag);
+        
+        Object.entries(additionalInfos).forEach(([id, info]) => {
+            const tag = document.createElement('div');
+            tag.className = `tag ${id === currentTagId ? 'active' : ''}`;
+            tag.innerHTML = `
+                ${info.name}
+                <button class="delete-btn" title="删除" data-id="${id}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            `;
+            
+            // 点击标签切换内容
+            tag.addEventListener('click', (e) => {
+                if (e.target.closest('.delete-btn')) return;
+                switchTag(id);
+            });
+            
+            // 删除标签
+            tag.querySelector('.delete-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteTag(id);
+            });
+            
+            tagsList.appendChild(tag);
+        });
+    }
+    
+    // 切换标签
+    function switchTag(tagId, skipSaveCheck = false) {
+        // 如果当前有未保存的内容，且不是通过另存为触发的切换，提示保存
+        if (!skipSaveCheck && currentTagId && additionalInfos[currentTagId] && 
+            additionalInfos[currentTagId].content !== additionalInfoTextarea.value) {
+            if (confirm('当前内容未保存，是否保存？')) {
+                saveCurrentContent();
+            }
+        }
+        
+        currentTagId = tagId;
+        additionalInfoTextarea.value = additionalInfos[tagId].content;
+        updateWordCount();
+        
+        // 更新UI
+        document.querySelectorAll('.tag').forEach(tag => {
+            tag.classList.toggle('active', tag.querySelector('.delete-btn').dataset.id === tagId);
+        });
+        
+        // 保存当前标签ID
+        chrome.storage.local.set({ currentTagId: tagId });
+    }
+    
+    // 另存为新标签
+    function saveAsNewTag() {
+        // 如果没有内容，不创建
+        if (!additionalInfoTextarea.value.trim()) {
+            showToastInPage('请先输入内容', 'warning');
+            return;
+        }
+
+        const name = prompt('请输入补充资料名称：');
+        if (!name) return;
+        
+        const id = Date.now().toString();
+        additionalInfos[id] = {
+            name: name,
+            content: additionalInfoTextarea.value
+        };
+        
+        // 保存到存储
+        chrome.storage.local.set({ additionalInfos: additionalInfos }, () => {
+            renderTags();
+            switchTag(id, true); // 传入 true 表示跳过保存检查
+            showToastInPage('创建成功', 'success');
+        });
+    }
+    
+    // 删除标签
+    function deleteTag(tagId) {
+        if (!confirm('确定要删除这份补充资料吗？')) return;
+        
+        delete additionalInfos[tagId];
+        
+        // 如果删除的是当前标签，清空编辑区
+        if (tagId === currentTagId) {
+            currentTagId = null;
+            additionalInfoTextarea.value = '';
+            updateWordCount();
+        }
+        
+        // 保存到存储
+        chrome.storage.local.set({ 
+            additionalInfos: additionalInfos,
+            currentTagId: currentTagId
+        }, () => {
+            renderTags();
+        });
+    }
+    
+    // 保存当前内容
+    function saveCurrentContent() {
+        // 如果是空标签，不允许保存
+        if (currentTagId === null) {
+            showToastInPage('空标签不能保存内容，请使用"另存为"创建新标签', 'error');
+            return;
+        }
+        
+        // 如果没有任何标签，创建新标签
+        if (Object.keys(additionalInfos).length === 0) {
+            saveAsNewTag();
+            return;
+        }
+        
+        // 如果有标签但没有选中任何标签，提示选择
+        if (!currentTagId) {
+            showToastInPage('请先选择一个补充资料', 'warning');
+            return;
+        }
+        
+        additionalInfos[currentTagId].content = additionalInfoTextarea.value;
+        
+        // 保存到存储
+        chrome.storage.local.set({ additionalInfos: additionalInfos }, () => {
+            showToastInPage('保存成功', 'success');
+        });
+    }
+    
+    // 添加事件监听器
+    saveInfoButton.addEventListener('click', saveCurrentContent);
+    saveAsButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        saveAsNewTag();
+    });
+    
+    // 初始化补充资料
+    initializeAdditionalInfo();
+    
     // 初始隐藏下拉列表
     modelDropdown.style.display = 'none';
     
@@ -369,12 +593,16 @@ document.addEventListener('DOMContentLoaded', function() {
             'volcengine': 'https://volcengine.com/L/i594ULBE/'
         };
 
+        const ollamaSection = document.getElementById('ollamaSection');
+
         if (provider === 'ollama') {
             apiContainer.classList.add('hidden');
             ollamaContainer.classList.remove('hidden');
+            ollamaSection.classList.remove('hidden'); // 显示 Ollama 配置指南
         } else {
             apiContainer.classList.remove('hidden');
             ollamaContainer.classList.add('hidden');
+            ollamaSection.classList.add('hidden'); // 隐藏 Ollama 配置指南
             
             // 创建标签文本和帮助链接
             const labelText = modelConfigs[provider].label;
@@ -904,7 +1132,15 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        const userPrompt = document.getElementById('user-prompt').value.trim();
+        let userPrompt = document.getElementById('user-prompt').value.trim();
+        
+        // 添加补充资料到用户提示词中
+        if (currentTagId && additionalInfos[currentTagId]) {
+            const additionalInfo = additionalInfos[currentTagId].content.trim();
+            if (additionalInfo) {
+                userPrompt = `${userPrompt}\n\n补充信息：\n${additionalInfo}`;
+            }
+        }
         
         if (!userPrompt) {
             showToastInPage('请输入您的要求', 'warning');
@@ -1135,6 +1371,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 执行表单识别和填充
     function executeFormRecognitionAndFill(tabId, config, userPrompt) {
+        // // 组合提示词
+        // let additionalInfo = '';
+        // if (currentTagId && additionalInfos[currentTagId]) {
+        //     additionalInfo = additionalInfos[currentTagId].content.trim();
+        // }
+        // const combinedPrompt = additionalInfo ? 
+        //     `${userPrompt}\n\n补充信息：\n${additionalInfo}` : 
+        //     userPrompt;
+        
         // 先执行表单识别
         chrome.tabs.sendMessage(tabId, {action: "extractXPaths"}, async function(response) {
             // 处理可能的错误
@@ -2381,5 +2626,34 @@ ${JSON.stringify(formElements, null, 2)}
         if (event.target === feedbackModal) {
             feedbackModal.style.display = 'none';
         }
+    });
+
+    // 加载保存的补充资料
+    chrome.storage.local.get('additionalInfo', function(data) {
+        if (data.additionalInfo) {
+            additionalInfoTextarea.value = data.additionalInfo;
+            updateWordCount();
+        }
+    });
+
+    // 更新字数统计
+    function updateWordCount() {
+        const text = additionalInfoTextarea.value;
+        const count = text.length;
+        let className = '';
+        
+        if (count > 1000) {
+            className = 'error';
+        } else if (count > 800) {
+            className = 'warning';
+        }
+        
+        wordCountDiv.textContent = `${count} 字`;
+        wordCountDiv.className = `word-count ${className}`;
+    }
+
+    // 监听补充资料输入
+    additionalInfoTextarea.addEventListener('input', function() {
+        updateWordCount();
     });
 }); 

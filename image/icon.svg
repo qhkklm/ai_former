@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- 背景 -->
+  <rect width="512" height="512" rx="100" fill="#4285f4" />
+  
+  <!-- 表单图标 -->
+  <g transform="translate(96, 96) scale(1.25)">
+    <!-- 表单外框 -->
+    <rect x="40" y="40" width="200" height="240" rx="16" fill="white" />
+    
+    <!-- 表单线条 -->
+    <rect x="70" y="90" width="140" height="8" rx="4" fill="#E1F5FE" />
+    <rect x="70" y="130" width="140" height="8" rx="4" fill="#E1F5FE" />
+    <rect x="70" y="170" width="140" height="8" rx="4" fill="#E1F5FE" />
+    <rect x="70" y="210" width="140" height="8" rx="4" fill="#E1F5FE" />
+    
+    <!-- 表单标签 -->
+    <rect x="70" y="70" width="60" height="6" rx="3" fill="#BBDEFB" />
+    <rect x="70" y="110" width="60" height="6" rx="3" fill="#BBDEFB" />
+    <rect x="70" y="150" width="60" height="6" rx="3" fill="#BBDEFB" />
+    <rect x="70" y="190" width="60" height="6" rx="3" fill="#BBDEFB" />
+    
+    <!-- 智能填充指示 -->
+    <circle cx="210" cy="74" r="10" fill="#34A853" />
+    <circle cx="210" cy="114" r="10" fill="#34A853" />
+    <circle cx="210" cy="154" r="10" fill="#34A853" />
+    <circle cx="210" cy="194" r="10" fill="#34A853" />
+    
+    <!-- 对勾 -->
+    <path d="M205 74 L208 77 L215 70" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <path d="M205 114 L208 117 L215 110" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <path d="M205 154 L208 157 L215 150" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <path d="M205 194 L208 197 L215 190" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  </g>
+  
+  <!-- 魔法光环 -->
+  <g opacity="0.8">
+    <circle cx="400" cy="120" r="24" fill="#FFEB3B" />
+    <path d="M400 96 L400 88 M424 120 L432 120 M400 144 L400 152 M376 120 L368 120 M417 103 L423 97 M417 137 L423 143 M383 137 L377 143 M383 103 L377 97" 
+          stroke="#FFEB3B" stroke-width="4" stroke-linecap="round" />
+  </g>
+</svg> 
