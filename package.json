@@ -1,0 +1,16 @@
+{
+  "name": "ai_former",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "zip": "wxt zip",
+    "prepare": "wxt prepare",
+    "clean": "wxt clean"
+  },
+  "devDependencies": {
+    "wxt": "^0.19.29"
+  }
+}
+
