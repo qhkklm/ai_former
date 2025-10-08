@@ -697,7 +697,7 @@ DeepSeek：deepseek-chat
         <div class="section">
             <div class="section-title">表单填充</div>
             <label for="user-prompt">请输入您的要求:</label>
-            <textarea id="user-prompt" placeholder="例如：请帮我填写个人信息，我是30岁的软件工程师"></textarea>
+            <textarea id="user-prompt" placeholder="例如：请帮我填写个人信息，我是30岁的软件工程师" value="补充完善表单"></textarea>
             <div class="shortcut-tip">
                 提示: 按 Ctrl+Enter 快速识别并填充表单
             </div>
@@ -804,5 +804,14 @@ ollama run qwen2.5-coder:14b</code>
     </div>
     
     <script src="sidepanel.js"></script>
+    <script>
+      // Set default prompt text if empty
+      document.addEventListener('DOMContentLoaded', function () {
+        var ta = document.getElementById('user-prompt');
+        if (ta && !ta.value) {
+          ta.value = '补充完善表单';
+        }
+      });
+    </script>
 </body>
 </html> 

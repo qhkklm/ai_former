@@ -913,7 +913,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 转换为所需格式
             const models = data.data
-                .filter(model => model.id.includes('GLM'))
+                .filter(model => model.id.includes('GLM') || model.id.includes('glm'))
                 .map(model => ({
                     value: model.id,
                     label: model.id
