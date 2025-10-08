@@ -176,6 +176,51 @@ function getPureHTML(element) {
     return formatHTML(clone);
 }
 
+// 使用原生属性setter以兼容React/Vue等框架的受控组件
+function setNativeValue(el, value) {
+    try {
+        const tag = el.tagName && el.tagName.toLowerCase();
+        if (tag === 'textarea') {
+            const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+            setter ? setter.call(el, value) : (el.value = value);
+            el.dispatchEvent(new InputEvent('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+        } else if (tag === 'input') {
+            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+            setter ? setter.call(el, value) : (el.value = value);
+            el.dispatchEvent(new InputEvent('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+        } else if (tag === 'select') {
+            const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
+            setter ? setter.call(el, value) : (el.value = value);
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+        } else {
+            // 其他情况，尝试直接赋值
+            el.value = value;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    } catch (e) {
+        try {
+            // 降级处理
+            el.value = value;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+        } catch {}
+    }
+}
+
+function setNativeChecked(el, checked) {
+    try {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked')?.set;
+        setter ? setter.call(el, !!checked) : (el.checked = !!checked);
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+    } catch (e) {
+        el.checked = !!checked;
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+}
+
 // 添加Toast消息功能
 function showToast(message, type = 'info', duration = 3000) {
     // 移除现有的toast
@@ -272,9 +317,8 @@ function processDocument(doc, results) {
         // 添加高亮类
         element.classList.add('element-highlight');
         
-        // 添加鼠标悬停提示
-        element.addEventListener('mouseover', (e) => {
-            // 先移除可能存在的其他 tooltip
+        // 添加鼠标悬停提示（保存引用，便于后续移除）
+        const mouseOverHandler = (e) => {
             const existingTooltips = document.querySelectorAll('.element-tooltip');
             existingTooltips.forEach(t => t.remove());
 
@@ -286,18 +330,19 @@ Name: ${element.name || 'N/A'}`;
             tooltip.style.left = `${e.pageX + 10}px`;
             tooltip.style.top = `${e.pageY + 10}px`;
             document.body.appendChild(tooltip);
-            // 使用 requestAnimationFrame 确保 DOM 更新后再添加 visible 类
             requestAnimationFrame(() => tooltip.classList.add('visible'));
-        });
-
-        element.addEventListener('mouseout', () => {
+        };
+        const mouseOutHandler = () => {
             const tooltips = document.querySelectorAll('.element-tooltip');
             tooltips.forEach(t => {
                 t.classList.remove('visible');
-                // 等待过渡动画完成后再移除元素
                 setTimeout(() => t.remove(), 200);
             });
-        });
+        };
+        element.addEventListener('mouseover', mouseOverHandler);
+        element.addEventListener('mouseout', mouseOutHandler);
+        element._aiFormerMouseOver = mouseOverHandler;
+        element._aiFormerMouseOut = mouseOutHandler;
 
         const elementInfo = {
             uniqueId: uniqueId,
@@ -359,9 +404,8 @@ Name: ${element.name || 'N/A'}`;
         // 添加高亮类
         element.classList.add('element-highlight');
         
-        // 添加鼠标悬停提示
-        element.addEventListener('mouseover', (e) => {
-            // 先移除可能存在的其他 tooltip
+        // 添加鼠标悬停提示（保存引用，便于后续移除）
+        const mouseOverHandler2 = (e) => {
             const existingTooltips = document.querySelectorAll('.element-tooltip');
             existingTooltips.forEach(t => t.remove());
 
@@ -373,18 +417,19 @@ Role: ${element.getAttribute('role') || 'N/A'}`;
             tooltip.style.left = `${e.pageX + 10}px`;
             tooltip.style.top = `${e.pageY + 10}px`;
             document.body.appendChild(tooltip);
-            // 使用 requestAnimationFrame 确保 DOM 更新后再添加 visible 类
             requestAnimationFrame(() => tooltip.classList.add('visible'));
-        });
-
-        element.addEventListener('mouseout', () => {
+        };
+        const mouseOutHandler2 = () => {
             const tooltips = document.querySelectorAll('.element-tooltip');
             tooltips.forEach(t => {
                 t.classList.remove('visible');
-                // 等待过渡动画完成后再移除元素
                 setTimeout(() => t.remove(), 200);
             });
-        });
+        };
+        element.addEventListener('mouseover', mouseOverHandler2);
+        element.addEventListener('mouseout', mouseOutHandler2);
+        element._aiFormerMouseOver = mouseOverHandler2;
+        element._aiFormerMouseOut = mouseOutHandler2;
         
         // 查找内部的输入元素
         const innerInputs = element.querySelectorAll('input, [contenteditable="true"]');
@@ -411,29 +456,36 @@ Role: ${element.getAttribute('role') || 'N/A'}`;
 
 // 修改removeHighlights函数，添加toast消息
 function removeHighlights() {
-    // 移除主文档中的高亮元素
+    // 移除主文档中的高亮元素（不替换节点，避免破坏页面框架的事件绑定）
     const highlightedElements = document.querySelectorAll('.element-highlight');
     highlightedElements.forEach(element => {
-        // 移除所有事件监听器
-        const clone = element.cloneNode(true);
-        element.parentNode.replaceChild(clone, element);
-        
-        clone.classList.remove('element-highlight');
-        // 移除可能添加的样式
-        clone.style.backgroundColor = '';
-        clone.style.border = '';
+        try {
+            if (element._aiFormerMouseOver) {
+                element.removeEventListener('mouseover', element._aiFormerMouseOver);
+                delete element._aiFormerMouseOver;
+            }
+            if (element._aiFormerMouseOut) {
+                element.removeEventListener('mouseout', element._aiFormerMouseOut);
+                delete element._aiFormerMouseOut;
+            }
+            element.classList.remove('element-highlight');
+            element.style.backgroundColor = '';
+            element.style.border = '';
+        } catch (e) {
+            console.warn('清理高亮元素时出错:', e);
+        }
     });
-    
+
     // 移除所有tooltip
     const tooltips = document.querySelectorAll('.element-tooltip');
     tooltips.forEach(tooltip => tooltip.remove());
-    
+
     // 移除高亮样式
     const style = document.getElementById('highlight-style');
     if (style) {
         style.remove();
     }
-    
+
     // 尝试清除iframe中的高亮
     const iframes = document.getElementsByTagName('iframe');
     Array.from(iframes).forEach(iframe => {
@@ -441,25 +493,33 @@ function removeHighlights() {
             const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
             const iframeHighlightedElements = iframeDoc.querySelectorAll('.element-highlight');
             iframeHighlightedElements.forEach(element => {
-                // 移除所有事件监听器
-                const clone = element.cloneNode(true);
-                element.parentNode.replaceChild(clone, element);
-                
-                clone.classList.remove('element-highlight');
-                clone.style.backgroundColor = '';
-                clone.style.border = '';
+                try {
+                    if (element._aiFormerMouseOver) {
+                        element.removeEventListener('mouseover', element._aiFormerMouseOver);
+                        delete element._aiFormerMouseOver;
+                    }
+                    if (element._aiFormerMouseOut) {
+                        element.removeEventListener('mouseout', element._aiFormerMouseOut);
+                        delete element._aiFormerMouseOut;
+                    }
+                    element.classList.remove('element-highlight');
+                    element.style.backgroundColor = '';
+                    element.style.border = '';
+                } catch (err) {
+                    console.warn('清理iframe高亮元素时出错:', err);
+                }
             });
-            
+
             const iframeTooltips = iframeDoc.querySelectorAll('.element-tooltip');
             iframeTooltips.forEach(tooltip => tooltip.remove());
         } catch (e) {
             console.log('无法访问iframe内容，可能是跨域限制:', e);
         }
     });
-    
+
     // 清除localStorage中的数据
     localStorage.removeItem('extractedElements');
-    
+
     // 显示toast消息
     showToast('已移除所有高亮', 'info');
 }
@@ -571,7 +631,6 @@ function fillFormElement(elementId, action) {
             element.textContent = action;
             element.dispatchEvent(new Event('input', { bubbles: true }));
             element.dispatchEvent(new Event('change', { bubbles: true }));
-            // 触发blur事件以确保内容保存
             setTimeout(() => {
                 element.dispatchEvent(new Event('blur', { bubbles: true }));
             }, 100);
@@ -607,9 +666,7 @@ function fillFormElement(elementId, action) {
                         innerInput.dispatchEvent(new Event('blur', { bubbles: true }));
                     }, 100);
                 } else {
-                    innerInput.value = action;
-                    innerInput.dispatchEvent(new Event('input', { bubbles: true }));
-                    innerInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    setNativeValue(innerInput, action);
                 }
                 
                 // 高亮已填充的元素
@@ -634,19 +691,14 @@ function fillFormElement(elementId, action) {
                 inputType === 'tel' || inputType === 'number' || inputType === 'url' || 
                 inputType === 'search' || inputType === 'date' || inputType === 'datetime-local') {
                 // 文本类型输入框
-                element.value = action;
-                // 触发input和change事件
-                element.dispatchEvent(new Event('input', { bubbles: true }));
-                element.dispatchEvent(new Event('change', { bubbles: true }));
+                setNativeValue(element, action);
             } else if (inputType === 'checkbox') {
                 // 复选框
                 const shouldCheck = action === true || action === 'true' || action === 'checked' || action === 'yes';
-                element.checked = shouldCheck;
-                element.dispatchEvent(new Event('change', { bubbles: true }));
+                setNativeChecked(element, shouldCheck);
             } else if (inputType === 'radio') {
                 // 单选按钮
-                element.checked = true;
-                element.dispatchEvent(new Event('change', { bubbles: true }));
+                setNativeChecked(element, true);
             }
         } else if (tagName === 'select') {
             // 下拉选择框
@@ -655,12 +707,12 @@ function fillFormElement(elementId, action) {
             // 尝试通过值匹配
             const valueOption = options.find(opt => opt.value === action);
             if (valueOption) {
-                element.value = action;
+                setNativeValue(element, action);
             } else {
                 // 尝试通过文本匹配
                 const textOption = options.find(opt => opt.text.toLowerCase() === action.toLowerCase());
                 if (textOption) {
-                    element.value = textOption.value;
+                    setNativeValue(element, textOption.value);
                 } else {
                     // 尝试部分匹配
                     const partialMatch = options.find(opt => 
@@ -668,19 +720,16 @@ function fillFormElement(elementId, action) {
                         action.toLowerCase().includes(opt.text.toLowerCase())
                     );
                     if (partialMatch) {
-                        element.value = partialMatch.value;
+                        setNativeValue(element, partialMatch.value);
                     } else {
                         console.warn(`未找到与 "${action}" 匹配的选项`);
                         return false;
                     }
                 }
             }
-            element.dispatchEvent(new Event('change', { bubbles: true }));
         } else if (tagName === 'textarea') {
             // 文本区域
-            element.value = action;
-            element.dispatchEvent(new Event('input', { bubbles: true }));
-            element.dispatchEvent(new Event('change', { bubbles: true }));
+            setNativeValue(element, action);
         } else {
             console.warn(`不支持填充 ${tagName} 类型的元素`);
             return false;
@@ -755,9 +804,7 @@ function fillIframeFormElements(iframeDoc, elementId, action) {
                         innerInput.dispatchEvent(new Event('blur', { bubbles: true }));
                     }, 100);
                 } else {
-                    innerInput.value = action;
-                    innerInput.dispatchEvent(new Event('input', { bubbles: true }));
-                    innerInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    setNativeValue(innerInput, action);
                 }
                 
                 // 高亮已填充的元素
@@ -780,44 +827,37 @@ function fillIframeFormElements(iframeDoc, elementId, action) {
             if (inputType === 'text' || inputType === 'email' || inputType === 'password' || 
                 inputType === 'tel' || inputType === 'number' || inputType === 'url' || 
                 inputType === 'search' || inputType === 'date' || inputType === 'datetime-local') {
-                element.value = action;
-                element.dispatchEvent(new Event('input', { bubbles: true }));
-                element.dispatchEvent(new Event('change', { bubbles: true }));
+                setNativeValue(element, action);
             } else if (inputType === 'checkbox') {
                 const shouldCheck = action === true || action === 'true' || action === 'checked' || action === 'yes';
-                element.checked = shouldCheck;
-                element.dispatchEvent(new Event('change', { bubbles: true }));
+                setNativeChecked(element, shouldCheck);
             } else if (inputType === 'radio') {
-                element.checked = true;
-                element.dispatchEvent(new Event('change', { bubbles: true }));
+                setNativeChecked(element, true);
             }
         } else if (tagName === 'select') {
             const options = Array.from(element.options);
             
             const valueOption = options.find(opt => opt.value === action);
             if (valueOption) {
-                element.value = action;
+                setNativeValue(element, action);
             } else {
                 const textOption = options.find(opt => opt.text.toLowerCase() === action.toLowerCase());
                 if (textOption) {
-                    element.value = textOption.value;
+                    setNativeValue(element, textOption.value);
                 } else {
                     const partialMatch = options.find(opt => 
                         opt.text.toLowerCase().includes(action.toLowerCase()) || 
                         action.toLowerCase().includes(opt.text.toLowerCase())
                     );
                     if (partialMatch) {
-                        element.value = partialMatch.value;
+                        setNativeValue(element, partialMatch.value);
                     } else {
                         return false;
                     }
                 }
             }
-            element.dispatchEvent(new Event('change', { bubbles: true }));
         } else if (tagName === 'textarea') {
-            element.value = action;
-            element.dispatchEvent(new Event('input', { bubbles: true }));
-            element.dispatchEvent(new Event('change', { bubbles: true }));
+            setNativeValue(element, action);
         } else {
             return false;
         }
